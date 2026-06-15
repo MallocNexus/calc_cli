@@ -20,24 +20,58 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-# Pure logic library — NO FTXUI dependency (keeps it unit-testable in isolation)
-add_library(calc_lib src/calculator.cpp)
-target_include_directories(calc_lib PUBLIC src/)
+# ---------------------------------------------------------------------------
+# Utility library (no dependencies)
+# ---------------------------------------------------------------------------
+add_library(util_lib src/util/formatting.cpp)
+target_include_directories(util_lib PUBLIC src/)
 
-# UI library — depends on FTXUI and calc_lib
-add_library(app_lib src/app.cpp)
+# ---------------------------------------------------------------------------
+# Layer 1: Model  (no FTXUI dependency)
+# Headers accessed as: #include "model/calculator.hpp"
+#                       #include "model/app_state.hpp"
+# ---------------------------------------------------------------------------
+add_library(calc_lib
+    src/model/calculator.cpp
+    src/model/parser.cpp
+)
+target_include_directories(calc_lib PUBLIC src/)
+target_link_libraries(calc_lib PUBLIC util_lib)
+
+# ---------------------------------------------------------------------------
+# Layer 2: Controller  (no FTXUI dependency)
+# Headers accessed as: #include "controller/app_controller.hpp"
+# ---------------------------------------------------------------------------
+add_library(controller_lib src/controller/app_controller.cpp)
+target_include_directories(controller_lib PUBLIC src/)
+target_link_libraries(controller_lib PUBLIC calc_lib util_lib)
+
+# ---------------------------------------------------------------------------
+# Layer 3: View  (depends on FTXUI + controller_lib)
+# Headers accessed as: #include "view/app.hpp"
+# ---------------------------------------------------------------------------
+add_library(app_lib src/view/app.cpp)
 target_include_directories(app_lib PUBLIC src/)
 target_link_libraries(app_lib PUBLIC
     ftxui::screen
     ftxui::dom
     ftxui::component
-    calc_lib
+    controller_lib
 )
 
+# ---------------------------------------------------------------------------
 # Main executable
+# ---------------------------------------------------------------------------
 add_executable(calc_cli src/main.cpp)
 target_link_libraries(calc_cli PRIVATE app_lib)
 
-# Test executable
+# ---------------------------------------------------------------------------
+# Test executable — can link any layer independently to test in isolation
+# ---------------------------------------------------------------------------
 add_executable(run_tests tests/test_main.cpp)
-target_link_libraries(run_tests PRIVATE Catch2::Catch2WithMain app_lib calc_lib)
+target_link_libraries(run_tests PRIVATE
+    Catch2::Catch2WithMain
+    app_lib
+    controller_lib
+    calc_lib
+)

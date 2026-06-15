@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "app.hpp"
-#include "calculator.hpp"
+#include "model/app_state.hpp"
+#include "model/calculator.hpp"
+#include "controller/app_controller.hpp"
+#include "view/app.hpp"
+#include "util/formatting.hpp"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
@@ -11,7 +14,31 @@ using namespace ftxui;
 using Catch::Matchers::WithinRel;
 
 // ===========================================================================
-// Unit Tests — Calculator (calc_lib only, no FTXUI involved)
+// Unit Tests — Util
+// ===========================================================================
+
+TEST_CASE("Util — FormatExpression", "[util]") {
+    SECTION("Basic spacing") {
+        REQUIRE(util::FormatExpression("2+2") == "2 + 2");
+        REQUIRE(util::FormatExpression(" 2  +   2 ") == "2 + 2");
+    }
+
+    SECTION("Parentheses") {
+        REQUIRE(util::FormatExpression("3*(4-1)") == "3 * (4 - 1)");
+        REQUIRE(util::FormatExpression("( 2 + 2 )") == "(2 + 2)");
+        REQUIRE(util::FormatExpression(" (2)+(3) ") == "(2) + (3)");
+    }
+
+    SECTION("Unary minus and plus") {
+        REQUIRE(util::FormatExpression("-5 + -2") == "-5 + -2");
+        REQUIRE(util::FormatExpression("+5 * -3") == "+5 * -3");
+        REQUIRE(util::FormatExpression("-(2+2)") == "-(2 + 2)");
+        REQUIRE(util::FormatExpression("- -2") == "- -2");
+    }
+}
+
+// ===========================================================================
+// Unit Tests — Model: Calculator  (calc_lib only, zero FTXUI)
 // ===========================================================================
 
 TEST_CASE("Calculator — basic arithmetic", "[calculator]") {
@@ -119,9 +146,7 @@ TEST_CASE("Calculator — error cases", "[calculator]") {
 TEST_CASE("Calculator — history", "[calculator]") {
     Calculator calc;
 
-    SECTION("History is empty initially") {
-        REQUIRE(calc.GetHistory().empty());
-    }
+    SECTION("History is empty initially") { REQUIRE(calc.GetHistory().empty()); }
 
     SECTION("Successful evaluations are recorded") {
         calc.Evaluate("1 + 1");
@@ -144,133 +169,188 @@ TEST_CASE("Calculator — history", "[calculator]") {
 }
 
 // ===========================================================================
-// Integration Tests — App UI (headless FTXUI event simulation)
-//
-// Focus order in Container::Vertical({top_menu, tab_container, expr_input}):
-//   Tab once  -> moves focus from top_menu  to tab_container (sub-menu)
-//   Tab twice -> moves focus from sub-menu  to expr_input
+// Unit Tests — Controller: AppController  (controller_lib only, zero FTXUI)
 // ===========================================================================
 
-// Helper: navigate focus from top_menu down to the expression input.
+TEST_CASE("AppController — OnEvaluate", "[controller]") {
+    AppState state;
+    Calculator calc;
+    AppController controller(state, calc, [] {});
+
+    SECTION("Success writes formatted result to state") {
+        state.expression_input = "3 + 4";
+        controller.OnEvaluate();
+        REQUIRE(state.result_display == "= 7");
+        REQUIRE_FALSE(state.error_state);
+    }
+
+    SECTION("Error sets error_state and prefixes message") {
+        state.expression_input = "1 / 0";
+        controller.OnEvaluate();
+        REQUIRE(state.error_state);
+        REQUIRE(state.result_display.rfind("Error:", 0) == 0);
+    }
+
+    SECTION("Successful evaluation adds to history") {
+        state.expression_input = "2 * 3";
+        controller.OnEvaluate();
+        REQUIRE(controller.GetHistory().size() == 1);
+        REQUIRE(controller.GetHistory()[0].first == "2 * 3");
+    }
+}
+
+TEST_CASE("AppController — OnClear", "[controller]") {
+    AppState state;
+    Calculator calc;
+    AppController controller(state, calc, [] {});
+
+    state.expression_input = "some expr";
+    state.result_display = "= 42";
+    state.error_state = true;
+    state.cursor_position = 5;
+
+    controller.OnClear();
+
+    REQUIRE(state.expression_input.empty());
+    REQUIRE(state.result_display.empty());
+    REQUIRE_FALSE(state.error_state);
+    REQUIRE(state.cursor_position == 0);
+}
+
+TEST_CASE("AppController — OnQuit", "[controller]") {
+    AppState state;
+    Calculator calc;
+    bool quit_called = false;
+    AppController controller(state, calc, [&] { quit_called = true; });
+
+    controller.OnQuit();
+    REQUIRE(quit_called);
+}
+
+TEST_CASE("AppController — modal flags", "[controller]") {
+    AppState state;
+    Calculator calc;
+    AppController controller(state, calc, [] {});
+
+    SECTION("Version modal open/close") {
+        REQUIRE_FALSE(state.show_version_modal);
+        controller.OnOpenVersion();
+        REQUIRE(state.show_version_modal);
+        controller.OnCloseVersion();
+        REQUIRE_FALSE(state.show_version_modal);
+    }
+}
+
+TEST_CASE("AppController — OnClearHistory", "[controller]") {
+    AppState state;
+    Calculator calc;
+    AppController controller(state, calc, [] {});
+
+    calc.Evaluate("1 + 1");
+    REQUIRE_FALSE(controller.GetHistory().empty());
+
+    controller.OnClearHistory();
+    REQUIRE(controller.GetHistory().empty());
+}
+
+// ===========================================================================
+// Integration Tests — View: App  (headless FTXUI event simulation)
 //
-// Horizontal menus do NOT consume ArrowDown, so it bubbles up to
-// Container::Vertical which moves focus to the next child:
-//   ArrowDown 1: top_menu   -> tab_container (sub-menu)
-//   ArrowDown 2: tab_container -> expr_input
+// Focus order in Container::Vertical({top_menu, tab_container, expr_input}):
+//   ArrowDown 1: top_menu (horizontal, ignores ArrowDown) -> tab_container
+//   ArrowDown 2: tab_container (horizontal sub-menu ignores ArrowDown) -> expr_input
+// ===========================================================================
+
 static void FocusExprInput(ftxui::Component& comp) {
     comp->OnEvent(Event::ArrowDown);  // top_menu -> tab_container
     comp->OnEvent(Event::ArrowDown);  // tab_container -> expr_input
 }
 
-TEST_CASE("App — evaluate expression", "[app]") {
-    AppState state;
-    Calculator calc;
-    bool quit_called = false;
-    App app(state, calc, [&] { quit_called = true; });
-    auto comp = app.GetComponent();
+// Helper to build standard test fixtures
+static auto MakeApp(bool* quit_called = nullptr) {
+    struct Fixture {
+        AppState state;
+        Calculator calc;
+        std::unique_ptr<AppController> controller;
+        std::unique_ptr<App> app;
+        ftxui::Component comp;
+    };
+    auto f = std::make_shared<Fixture>();
+    bool* qc = quit_called;
+    f->controller = std::make_unique<AppController>(
+        f->state, f->calc, [qc] {
+            if (qc) *qc = true;
+        });
+    f->app = std::make_unique<App>(f->state, *f->controller);
+    f->comp = f->app->GetComponent();
+    return f;
+}
 
-    FocusExprInput(comp);
-    state.expression_input = "3 + 4";
-
-    comp->OnEvent(Event::Return);
-
-    REQUIRE(state.result_display == "= 7");
-    REQUIRE_FALSE(state.error_state);
+TEST_CASE("App — evaluate expression via keypress", "[app]") {
+    auto f = MakeApp();
+    FocusExprInput(f->comp);
+    f->state.expression_input = "3 + 4";
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.result_display == "= 7");
+    REQUIRE_FALSE(f->state.error_state);
 }
 
 TEST_CASE("App — error display on bad expression", "[app]") {
-    AppState state;
-    Calculator calc;
-    App app(state, calc, [] {});
-    auto comp = app.GetComponent();
-
-    FocusExprInput(comp);
-    state.expression_input = "1 / 0";
-
-    comp->OnEvent(Event::Return);
-
-    REQUIRE(state.error_state);
-    REQUIRE(state.result_display.rfind("Error:", 0) == 0);
+    auto f = MakeApp();
+    FocusExprInput(f->comp);
+    f->state.expression_input = "1 / 0";
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.error_state);
+    REQUIRE(f->state.result_display.rfind("Error:", 0) == 0);
 }
 
 TEST_CASE("App — Escape clears input and result", "[app]") {
-    AppState state;
-    Calculator calc;
-    App app(state, calc, [] {});
-    auto comp = app.GetComponent();
-
-    FocusExprInput(comp);
-    state.expression_input = "42";
-    state.result_display = "= 42";
-
-    comp->OnEvent(Event::Escape);
-
-    REQUIRE(state.expression_input.empty());
-    REQUIRE(state.result_display.empty());
-    REQUIRE_FALSE(state.error_state);
+    auto f = MakeApp();
+    FocusExprInput(f->comp);
+    f->state.expression_input = "42";
+    f->state.result_display = "= 42";
+    f->comp->OnEvent(Event::Escape);
+    REQUIRE(f->state.expression_input.empty());
+    REQUIRE(f->state.result_display.empty());
+    REQUIRE_FALSE(f->state.error_state);
 }
 
-TEST_CASE("App — Edit -> Clear clears input", "[app]") {
-    AppState state;
-    Calculator calc;
-    App app(state, calc, [] {});
-    auto comp = app.GetComponent();
-
-    state.expression_input = "some expression";
-
-    // Navigate top menu to "Edit" (index 1, one ArrowRight from "File")
-    comp->OnEvent(Event::ArrowRight);   // File -> Edit
-    // Move into sub-menu
-    comp->OnEvent(Event::ArrowDown);    // focus into Edit sub-menu ("Clear" focused)
-    // Trigger "Clear"
-    comp->OnEvent(Event::Return);
-
-    REQUIRE(state.expression_input.empty());
-    REQUIRE(state.result_display.empty());
+TEST_CASE("App — Edit -> Clear via menu", "[app]") {
+    auto f = MakeApp();
+    f->state.expression_input = "some expression";
+    f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+    f->comp->OnEvent(Event::ArrowDown);    // focus into Edit sub-menu
+    f->comp->OnEvent(Event::Return);       // trigger Clear
+    REQUIRE(f->state.expression_input.empty());
+    REQUIRE(f->state.result_display.empty());
 }
 
-TEST_CASE("App — Edit -> History opens history modal", "[app]") {
-    AppState state;
-    Calculator calc;
-    App app(state, calc, [] {});
-    auto comp = app.GetComponent();
+TEST_CASE("App — Edit -> Clear History via menu", "[app]") {
+    auto f = MakeApp();
+    f->calc.Evaluate("1 + 1");
+    REQUIRE_FALSE(f->controller->GetHistory().empty());
 
-    // Navigate to Edit sub-menu
-    comp->OnEvent(Event::ArrowRight);   // File -> Edit
-    comp->OnEvent(Event::ArrowDown);    // focus into Edit sub-menu
-    // Move to "History" (index 1, one ArrowRight from "Clear")
-    comp->OnEvent(Event::ArrowRight);
-    // Trigger "History"
-    comp->OnEvent(Event::Return);
+    f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+    f->comp->OnEvent(Event::ArrowDown);    // focus into Edit sub-menu
+    f->comp->OnEvent(Event::ArrowRight);   // Clear Input -> Clear History
+    f->comp->OnEvent(Event::Return);       // trigger Clear History
 
-    REQUIRE(state.show_history_modal);
+    REQUIRE(f->controller->GetHistory().empty());
 }
 
-TEST_CASE("App — Help -> Version opens version modal", "[app]") {
-    AppState state;
-    Calculator calc;
-    App app(state, calc, [] {});
-    auto comp = app.GetComponent();
-
-    // Navigate to Help (index 2, two ArrowRights from File)
-    comp->OnEvent(Event::ArrowRight);   // File -> Edit
-    comp->OnEvent(Event::ArrowRight);   // Edit -> Help
-    comp->OnEvent(Event::ArrowDown);    // focus into Help sub-menu
-    comp->OnEvent(Event::Return);       // trigger "Version"
-
-    REQUIRE(state.show_version_modal);
+TEST_CASE("App — Help -> Version opens modal", "[app]") {
+    auto f = MakeApp();
+    f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+    f->comp->OnEvent(Event::ArrowRight);   // Edit -> Help
+    f->comp->OnEvent(Event::ArrowDown);    // focus into Help sub-menu
+    f->comp->OnEvent(Event::Return);       // trigger Version
+    REQUIRE(f->state.show_version_modal);
 }
 
 TEST_CASE("App — File -> Quit calls on_quit", "[app]") {
-    AppState state;
-    Calculator calc;
     bool quit_called = false;
-    App app(state, calc, [&] { quit_called = true; });
-    auto comp = app.GetComponent();
-
-    // "File" is already selected (index 0). Move into sub-menu.
-    comp->OnEvent(Event::ArrowDown);    // focus into File sub-menu ("Quit" focused)
-    comp->OnEvent(Event::Return);       // trigger "Quit"
-
+    auto f = MakeApp(&quit_called);
+    f->comp->OnEvent(Event::ArrowDown);    // focus into File sub-menu
+    f->comp->OnEvent(Event::Return);       // trigger Quit
     REQUIRE(quit_called);
 }
