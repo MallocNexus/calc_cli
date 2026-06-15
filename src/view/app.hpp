@@ -1,9 +1,8 @@
 #pragma once
 
+#include <ftxui/component/component.hpp>
 #include <string>
 #include <vector>
-
-#include <ftxui/component/component.hpp>
 
 #include "model/app_state.hpp"
 
@@ -16,14 +15,14 @@ class AppController;
 // Contains NO business logic — every action delegates to the controller.
 // ---------------------------------------------------------------------------
 class App {
-  public:
+   public:
     App(AppState& state, AppController& controller);
 
     // Returns the root component. Pass to ScreenInteractive::Loop or call
     // OnEvent() directly in integration tests.
     ftxui::Component GetComponent();
 
-  private:
+   private:
     AppState& state_;
     AppController& controller_;
 
@@ -38,7 +37,7 @@ class App {
     std::vector<std::string> edit_entries_ = {"Clear Input", "Clear History"};
     int edit_selected_ = 0;
 
-    std::vector<std::string> exchange_entries_ = {"AUD -> USD", "Custom"};
+    std::vector<std::string> exchange_entries_ = {"AUD->USD", "Custom"};
     int exchange_selected_ = 0;
 
     std::vector<std::string> help_entries_ = {"Version"};
