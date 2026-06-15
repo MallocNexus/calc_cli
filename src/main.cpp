@@ -48,18 +48,18 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // 1. Check for piped input (stdin is not a terminal)
+    // 1. Explicit headless mode via arguments (takes precedence)
+    if (!expr_arg.empty()) {
+        return RunHeadless(expr_arg, print_only_value);
+    }
+
+    // 2. Check for piped input (stdin is not a terminal)
     if (!isatty(STDIN_FILENO)) {
         std::string expr;
         std::getline(std::cin, expr);
         if (!expr.empty()) {
             return RunHeadless(expr, print_only_value);
         }
-    }
-
-    // 2. Explicit headless mode via arguments
-    if (!expr_arg.empty()) {
-        return RunHeadless(expr_arg, print_only_value);
     }
     using namespace ftxui;
 
