@@ -1,0 +1,56 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "build",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "none",
+            "detail": "Configure the CMake build directory using the Ninja generator."
+        },
+        {
+            "label": "CMake Build Project",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": [
+                "CMake Configure"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build the entire project using CMake."
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "./build/run_tests",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "CMake Build Project"
+            ],
+            "problemMatcher": [],
+            "detail": "Run the test suite."
+        }
+    ]
+}
