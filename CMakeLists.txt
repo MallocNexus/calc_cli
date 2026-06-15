@@ -85,7 +85,10 @@ target_link_libraries(controller_lib PUBLIC
 # Layer 3: View  (depends on FTXUI + controller_lib)
 # Headers accessed as: #include "view/app.hpp"
 # ---------------------------------------------------------------------------
-add_library(app_lib src/view/app.cpp)
+add_library(app_lib 
+    src/view/app.cpp
+    src/view/custom_exchange.cpp
+)
 target_include_directories(app_lib PUBLIC src/)
 target_link_libraries(app_lib PUBLIC
     ftxui::screen

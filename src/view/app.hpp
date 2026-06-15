@@ -3,11 +3,13 @@
 #include <ftxui/component/component.hpp>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "model/app_state.hpp"
 
 // Forward declaration — avoids pulling FTXUI into controller or model headers.
 class AppController;
+namespace view { class CustomExchange; }
 
 // ---------------------------------------------------------------------------
 // App (View)
@@ -44,4 +46,5 @@ class App {
     int help_selected_ = 0;
 
     ftxui::Component component_;
+    std::shared_ptr<view::CustomExchange> custom_exchange_;
 };

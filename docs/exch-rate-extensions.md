@@ -101,7 +101,8 @@ target_link_libraries(calc_lib PUBLIC
 
 To maintain the project's strict MVC separation and support offline/unit testing of the parser, we will use a decoupled dependency injection architecture:
 
-* **View: App** ➡️ Interacts only with `AppController`.
+* **View: App** ➡️ Interacts only with `AppController` and delegates custom exchange inputs to `CustomExchange`.
+* **View: CustomExchange** ➡️ Mutates the expression input and cursor location in AppState during custom exchange setup.
 * **Controller: AppController** ➡️ Coordinates overall app execution and holds a reference to `ExchangeRateController`.
 * **Controller: ExchangeRateController** ➡️ Responsible for checking the database cache, invoking the `cpr` library to perform network requests when the cache is missing/stale, and writing updated rates back to the database.
 * **Model: ExchangeRate** ➡️ Handles local SQLite database CRUD operations for cache records. Has zero network dependencies.
@@ -110,6 +111,7 @@ To maintain the project's strict MVC separation and support offline/unit testing
 ```mermaid
 graph TD
     A[View: App] --> B[Controller: AppController]
+    A --> G[View: CustomExchange]
     B --> H[Controller: ExchangeRateController]
     B --> C[Model: Calculator]
     H --> D[Model: ExchangeRate]
@@ -573,7 +575,42 @@ std::string FormatExpression(const std::string& input) {
 
 ---
 
-## 13. Implementation Checklist
+## 13. Custom Exchange Modal Component Refactoring
+
+To maintain high code modularity and clean decoupling, the floating dialog box code for Custom currency conversion will be moved out of `app.cpp` into a dedicated view class `view::CustomExchange` in `src/view/custom_exchange.hpp/cpp`.
+
+### Interface: `src/view/custom_exchange.hpp`
+```cpp
+#pragma once
+
+#include <ftxui/component/component.hpp>
+#include "model/app_state.hpp"
+
+namespace view {
+
+class CustomExchange {
+  public:
+    explicit CustomExchange(AppState& state);
+    ftxui::Component GetComponent();
+
+  private:
+    AppState& state_;
+    ftxui::Component component_;
+};
+
+} // namespace view
+```
+
+### Integration in `src/view/app.cpp`
+We instantiate `CustomExchange` inside the `App` constructor:
+```cpp
+    auto custom_exchange_view = std::make_shared<view::CustomExchange>(state_);
+    auto custom_modal = custom_exchange_view->GetComponent();
+```
+
+---
+
+## 14. Implementation Checklist
 
 - [ ] Add `cpr` and `nlohmann/json` `FetchContent` blocks to `CMakeLists.txt`. Include new source files in `calc_lib` and `controller_lib`.
 - [ ] Implement `ExchangeRate` model in `src/model/exchange_rate.hpp/cpp` (storing database in `~/.calc_cli/exchange_rate.db`).
@@ -583,10 +620,11 @@ std::string FormatExpression(const std::string& input) {
 - [ ] Refactor `AppController` to accept `ExchangeRateController` and pass its resolver lambda to `Calculator::Evaluate`.
 - [ ] Add the database initialization helper inside `src/main.cpp` for the exchange rate database.
 - [ ] Update `main.cpp` argument parser to accept `--exchange "(BASE,QUOTE)"` and append the suffix to the expression in `RunHeadless`.
-- [ ] Refactor `App` view in `src/view/app.hpp/cpp` to add the "Exchange" top-level menu, "AUD -> USD" / "Custom" submenus, and implement the Custom modal popup dialog (handling OK/Cancel actions).
+- [ ] Implement the `view::CustomExchange` class in `src/view/custom_exchange.hpp/cpp` to encapsulate the custom exchange modal.
+- [ ] Refactor `App` view in `src/view/app.hpp/cpp` to add the "Exchange" top-level menu, "AUD -> USD" / "Custom" submenus, and delegate the custom modal popup rendering to `CustomExchange`.
+- [ ] Add `src/view/custom_exchange.cpp` to the `app_lib` library definition in `CMakeLists.txt`.
 - [ ] Update `util::FormatExpression` in `src/util/formatting.cpp` to correctly format spacing around `exchange` keywords, parentheses, and commas.
 - [ ] Instantiate `ExchangeRate` and `ExchangeRateController` in `main.cpp` and pass them to the evaluation paths.
 - [ ] Write Catch2 tests for `ExchangeRate` model, mock resolution, TUI event integrations, and expression formatting.
 - [ ] Compile and verify all tests pass.
-
 ```
