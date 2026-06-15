@@ -4,13 +4,16 @@
 #include "model/app_state.hpp"
 #include "model/calculator.hpp"
 #include "model/history_repository.hpp"
+#include "model/exchange_rate.hpp"
 #include "controller/app_controller.hpp"
 #include "controller/history_controller.hpp"
+#include "controller/exchange_rate_controller.hpp"
 #include "view/app.hpp"
 #include "util/formatting.hpp"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
+#include <memory>
 
 using namespace ftxui;
 using Catch::Matchers::WithinRel;
@@ -36,6 +39,13 @@ TEST_CASE("Util — FormatExpression", "[util]") {
         REQUIRE(util::FormatExpression("+5 * -3") == "+5 * -3");
         REQUIRE(util::FormatExpression("-(2+2)") == "-(2 + 2)");
         REQUIRE(util::FormatExpression("- -2") == "- -2");
+    }
+
+    SECTION("Exchange function") {
+        REQUIRE(util::FormatExpression("100exchange(AUD,USD)") == "100 exchange(AUD, USD)");
+        REQUIRE(util::FormatExpression("2+2 exchange(AUD,USD)") == "2 + 2 exchange(AUD, USD)");
+        REQUIRE(util::FormatExpression("exchange(AUD,USD)") == "exchange(AUD, USD)");
+        REQUIRE(util::FormatExpression("exchange(AUD,USD)+5") == "exchange(AUD, USD) + 5");
     }
 }
 
@@ -181,7 +191,12 @@ TEST_CASE("AppController — OnEvaluate", "[controller]") {
     HistoryRepository repo(":memory:");
     repo.Initialize();
     HistoryController history_ctrl(repo);
-    AppController controller(state, calc, history_ctrl, [] {});
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
 
     SECTION("Success writes formatted result to state") {
         state.expression_input = "3 + 4";
@@ -211,7 +226,12 @@ TEST_CASE("AppController — OnClear", "[controller]") {
     HistoryRepository repo(":memory:");
     repo.Initialize();
     HistoryController history_ctrl(repo);
-    AppController controller(state, calc, history_ctrl, [] {});
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
 
     state.expression_input = "some expr";
     state.result_display = "= 42";
@@ -232,8 +252,13 @@ TEST_CASE("AppController — OnQuit", "[controller]") {
     HistoryRepository repo(":memory:");
     repo.Initialize();
     HistoryController history_ctrl(repo);
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
     bool quit_called = false;
-    AppController controller(state, calc, history_ctrl, [&] { quit_called = true; });
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [&] { quit_called = true; });
 
     controller.OnQuit();
     REQUIRE(quit_called);
@@ -245,7 +270,12 @@ TEST_CASE("AppController — modal flags", "[controller]") {
     HistoryRepository repo(":memory:");
     repo.Initialize();
     HistoryController history_ctrl(repo);
-    AppController controller(state, calc, history_ctrl, [] {});
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
 
     SECTION("Version modal open/close") {
         REQUIRE_FALSE(state.show_version_modal);
@@ -262,7 +292,12 @@ TEST_CASE("AppController — OnClearHistory", "[controller]") {
     HistoryRepository repo(":memory:");
     repo.Initialize();
     HistoryController history_ctrl(repo);
-    AppController controller(state, calc, history_ctrl, [] {});
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
 
     history_ctrl.OnSaveHistory("1 + 1", "2");
     REQUIRE_FALSE(controller.GetHistory().empty());
@@ -291,6 +326,8 @@ static auto MakeApp(bool* quit_called = nullptr) {
         Calculator calc;
         std::unique_ptr<HistoryRepository> history_repo;
         std::unique_ptr<HistoryController> history_ctrl;
+        std::unique_ptr<ExchangeRate> exch_repo;
+        std::unique_ptr<ExchangeRateController> exch_ctrl;
         std::unique_ptr<AppController> controller;
         std::unique_ptr<App> app;
         ftxui::Component comp;
@@ -299,9 +336,14 @@ static auto MakeApp(bool* quit_called = nullptr) {
     f->history_repo = std::make_unique<HistoryRepository>(":memory:");
     f->history_repo->Initialize();
     f->history_ctrl = std::make_unique<HistoryController>(*f->history_repo);
+    
+    f->exch_repo = std::make_unique<ExchangeRate>(":memory:");
+    f->exch_repo->Initialize();
+    f->exch_ctrl = std::make_unique<ExchangeRateController>(*f->exch_repo);
+
     bool* qc = quit_called;
     f->controller = std::make_unique<AppController>(
-        f->state, f->calc, *f->history_ctrl, [qc] {
+        f->state, f->calc, *f->history_ctrl, *f->exch_ctrl, [qc] {
             if (qc) *qc = true;
         });
     f->app = std::make_unique<App>(f->state, *f->controller);
@@ -364,7 +406,8 @@ TEST_CASE("App — Edit -> Clear History via menu", "[app]") {
 TEST_CASE("App — Help -> Version opens modal", "[app]") {
     auto f = MakeApp();
     f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
-    f->comp->OnEvent(Event::ArrowRight);   // Edit -> Help
+    f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
+    f->comp->OnEvent(Event::ArrowRight);   // Exchange -> Help
     f->comp->OnEvent(Event::ArrowDown);    // focus into Help sub-menu
     f->comp->OnEvent(Event::Return);       // trigger Version
     REQUIRE(f->state.show_version_modal);
@@ -376,4 +419,115 @@ TEST_CASE("App — File -> Quit calls on_quit", "[app]") {
     f->comp->OnEvent(Event::ArrowDown);    // focus into File sub-menu
     f->comp->OnEvent(Event::Return);       // trigger Quit
     REQUIRE(quit_called);
+}
+
+// ===========================================================================
+// Unit Tests — Model: ExchangeRate & ExchangeRateController
+// ===========================================================================
+
+TEST_CASE("ExchangeRate Cache Model", "[exchange_rate]") {
+    ExchangeRate repo(":memory:");
+    REQUIRE(repo.Initialize());
+
+    SECTION("Get cached rate for missing pair returns false") {
+        CachedRate rate;
+        REQUIRE_FALSE(repo.GetCachedRate("AUD", "USD", rate));
+    }
+
+    SECTION("Save and retrieve rate") {
+        REQUIRE(repo.SaveRate("AUD", "USD", 0.70));
+        CachedRate rate;
+        REQUIRE(repo.GetCachedRate("AUD", "USD", rate));
+        REQUIRE(rate.rate == 0.70);
+        REQUIRE(rate.timestamp > 0);
+    }
+}
+
+TEST_CASE("Parser - exchange function with mock resolver", "[parser]") {
+    auto mock_resolver = [](const std::string& base, const std::string& quote) {
+        if (base == "AUD" && quote == "USD") return 0.70;
+        throw std::runtime_error("Unsupported currency pair");
+    };
+
+    Calculator calc;
+    
+    SECTION("Basic exchange lookup") {
+        auto res = calc.Evaluate("exchange(AUD, USD)", mock_resolver);
+        REQUIRE(res.ok);
+        REQUIRE_THAT(res.value, WithinRel(0.70, 1e-9));
+    }
+
+    SECTION("Basic exchange lookup with implicit multiplication") {
+        auto res = calc.Evaluate("100 exchange(AUD, USD)", mock_resolver);
+        REQUIRE(res.ok);
+        REQUIRE_THAT(res.value, WithinRel(70.0, 1e-9));
+    }
+
+    SECTION("Expression-wide suffix precedence") {
+        auto res = calc.Evaluate("2 + 4 + 7 * 9 exchange(AUD, USD)", mock_resolver);
+        REQUIRE(res.ok);
+        REQUIRE_THAT(res.value, WithinRel(48.3, 1e-9)); // (2 + 4 + 63) * 0.70 = 69 * 0.70 = 48.3
+    }
+
+    SECTION("Prefix / term integration") {
+        auto res = calc.Evaluate("5 + exchange(AUD, USD)", mock_resolver);
+        REQUIRE(res.ok);
+        REQUIRE_THAT(res.value, WithinRel(5.70, 1e-9));
+    }
+}
+
+TEST_CASE("App — Exchange -> AUD -> USD inserts shorthand", "[app]") {
+    auto f = MakeApp();
+    f->state.expression_input = "100 ";
+    f->state.cursor_position = 4;
+
+    f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+    f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
+    f->comp->OnEvent(Event::ArrowDown);    // focus into Exchange sub-menu (AUD -> USD)
+    f->comp->OnEvent(Event::Return);       // trigger insert
+
+    REQUIRE(f->state.expression_input == "100 exchange(AUD, USD)");
+}
+
+TEST_CASE("App — Exchange -> Custom opens modal and handles OK/Cancel", "[app]") {
+    auto f = MakeApp();
+    
+    SECTION("Cancel closes custom modal without changes") {
+        f->state.expression_input = "100 ";
+        f->state.cursor_position = 4;
+
+        f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+        f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
+        f->comp->OnEvent(Event::ArrowDown);    // focus into Exchange sub-menu
+        f->comp->OnEvent(Event::ArrowRight);   // AUD -> USD -> Custom
+        f->comp->OnEvent(Event::Return);       // open custom modal
+
+        REQUIRE(f->state.show_custom_modal);
+
+        f->comp->OnEvent(Event::Escape);       // trigger cancel via Esc
+
+        REQUIRE_FALSE(f->state.show_custom_modal);
+        REQUIRE(f->state.expression_input == "100 ");
+    }
+
+    SECTION("OK inserts custom exchange function") {
+        f->state.expression_input = "100 ";
+        f->state.cursor_position = 4;
+
+        f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+        f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
+        f->comp->OnEvent(Event::ArrowDown);    // focus into Exchange sub-menu
+        f->comp->OnEvent(Event::ArrowRight);   // AUD -> USD -> Custom
+        f->comp->OnEvent(Event::Return);       // open custom modal
+
+        REQUIRE(f->state.show_custom_modal);
+
+        f->state.custom_source_input = "EUR";
+        f->state.custom_target_input = "GBP";
+
+        f->comp->OnEvent(Event::Return);       // trigger OK via Enter
+
+        REQUIRE_FALSE(f->state.show_custom_modal);
+        REQUIRE(f->state.expression_input == "100 exchange(EUR, GBP)");
+    }
 }

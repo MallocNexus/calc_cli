@@ -3,10 +3,12 @@
 #include <cctype>
 #include <stdexcept>
 #include <string>
+#include <algorithm>
 
 namespace model::internal {
 
-Parser::Parser(const std::string& input) : input_(input), pos_(0) {}
+Parser::Parser(const std::string& input, RateResolver resolver)
+    : input_(input), pos_(0), rate_resolver_(resolver) {}
 
 size_t Parser::Position() const { return pos_; }
 
@@ -53,6 +55,20 @@ double Parser::ParseNumber() {
     return std::stod(input_.substr(start, pos_ - start));
 }
 
+std::string Parser::ParseCurrency() {
+    SkipWhitespace();
+    std::string currency = "";
+    while (pos_ < input_.size() && std::isalpha(static_cast<unsigned char>(input_[pos_]))) {
+        currency += input_[pos_];
+        ++pos_;
+    }
+    if (currency.empty()) {
+        throw std::runtime_error("Expected currency identifier (e.g. AUD)");
+    }
+    std::transform(currency.begin(), currency.end(), currency.begin(), ::toupper);
+    return currency;
+}
+
 double Parser::ParsePrimary() {
     SkipWhitespace();
     if (Peek() == '(') {
@@ -65,6 +81,37 @@ double Parser::ParsePrimary() {
         Advance();  // consume ')'
         return val;
     }
+    
+    // Check if the next token is the keyword "exchange"
+    if (input_.compare(pos_, 8, "exchange") == 0) {
+        size_t next_pos = pos_ + 8;
+        if (next_pos >= input_.size() || !std::isalpha(static_cast<unsigned char>(input_[next_pos]))) {
+            pos_ += 8; // consume "exchange"
+            SkipWhitespace();
+            if (Peek() != '(') {
+                throw std::runtime_error("Expected '(' after exchange");
+            }
+            Advance(); // consume '('
+            std::string base = ParseCurrency();
+            SkipWhitespace();
+            if (Peek() != ',') {
+                throw std::runtime_error("Expected ',' after base currency");
+            }
+            Advance(); // consume ','
+            std::string quote = ParseCurrency();
+            SkipWhitespace();
+            if (Peek() != ')') {
+                throw std::runtime_error("Expected ')' after quote currency");
+            }
+            Advance(); // consume ')'
+            
+            if (!rate_resolver_) {
+                throw std::runtime_error("Rate resolver is not set");
+            }
+            return rate_resolver_(base, quote);
+        }
+    }
+    
     return ParseNumber();
 }
 
@@ -101,11 +148,7 @@ double Parser::ParseTerm() {
     return left;
 }
 
-// ---------------------------------------------------------------------------
-// Public: top-level entry point
-// ---------------------------------------------------------------------------
-
-double Parser::ParseExpr() {
+double Parser::ParseSumExpression() {
     double left = ParseTerm();
     while (true) {
         SkipWhitespace();
@@ -117,6 +160,45 @@ double Parser::ParseExpr() {
             left -= ParseTerm();
         } else {
             break;
+        }
+    }
+    return left;
+}
+
+// ---------------------------------------------------------------------------
+// Public: top-level entry point
+// ---------------------------------------------------------------------------
+
+double Parser::ParseExpr() {
+    double left = ParseSumExpression();
+    SkipWhitespace();
+    if (input_.compare(pos_, 8, "exchange") == 0) {
+        size_t next_pos = pos_ + 8;
+        if (next_pos >= input_.size() || !std::isalpha(static_cast<unsigned char>(input_[next_pos]))) {
+            pos_ += 8; // consume "exchange"
+            SkipWhitespace();
+            if (Peek() != '(') {
+                throw std::runtime_error("Expected '(' after exchange");
+            }
+            Advance(); // consume '('
+            std::string base = ParseCurrency();
+            SkipWhitespace();
+            if (Peek() != ',') {
+                throw std::runtime_error("Expected ',' after base currency");
+            }
+            Advance(); // consume ','
+            std::string quote = ParseCurrency();
+            SkipWhitespace();
+            if (Peek() != ')') {
+                throw std::runtime_error("Expected ')' after quote currency");
+            }
+            Advance(); // consume ')'
+            
+            if (!rate_resolver_) {
+                throw std::runtime_error("Rate resolver is not set");
+            }
+            double rate = rate_resolver_(base, quote);
+            left *= rate;
         }
     }
     return left;

@@ -1,8 +1,10 @@
 #include "model/app_state.hpp"
 #include "model/calculator.hpp"
 #include "model/history_repository.hpp"
+#include "model/exchange_rate.hpp"
 #include "controller/app_controller.hpp"
 #include "controller/history_controller.hpp"
+#include "controller/exchange_rate_controller.hpp"
 #include "view/app.hpp"
 #include "util/formatting.hpp"
 
@@ -32,10 +34,52 @@ static std::string GetDatabasePath() {
     return db_dir + "/calc_history.db";
 }
 
-static int RunHeadless(const std::string& expr, bool print_only_value, HistoryController& history_ctrl) {
-    std::string formatted = util::FormatExpression(expr);
+static std::string GetExchangeRateDatabasePath() {
+    const char* home = std::getenv("HOME");
+    if (!home) {
+        home = std::getenv("USERPROFILE");
+    }
+    
+    std::string db_dir;
+    if (home) {
+        db_dir = std::string(home) + "/.calc_cli";
+    } else {
+        db_dir = ".calc_cli";
+    }
+
+    std::filesystem::create_directories(db_dir);
+    return db_dir + "/exchange_rate.db";
+}
+
+static int RunHeadless(const std::string& expr, bool print_only_value, 
+                       HistoryController& history_ctrl,
+                       ExchangeRateController& exch_ctrl,
+                       const std::string& exchange_arg = "") {
+    std::string final_expr = expr;
+    if (!exchange_arg.empty()) {
+        // Parse base and quote from exchange_arg, e.g. "(AUD,USD)" or "AUD,USD"
+        std::string clean = exchange_arg;
+        if (clean.front() == '(' && clean.back() == ')') {
+            clean = clean.substr(1, clean.size() - 2);
+        }
+        auto comma = clean.find(',');
+        if (comma == std::string::npos || comma == 0 || comma == clean.size() - 1) {
+            std::cerr << "Error: Invalid exchange format. Expected (BASE,QUOTE)\n";
+            return EXIT_FAILURE;
+        }
+        std::string base = clean.substr(0, comma);
+        std::string quote = clean.substr(comma + 1);
+        final_expr = expr + " exchange(" + base + "," + quote + ")";
+    }
+
+    std::string formatted = util::FormatExpression(final_expr);
     Calculator calc;
-    EvaluationResult res = calc.Evaluate(formatted);
+    
+    auto resolver = [&exch_ctrl](const std::string& base, const std::string& quote) {
+        return exch_ctrl.GetRate(base, quote);
+    };
+
+    EvaluationResult res = calc.Evaluate(formatted, resolver);
     
     if (res.ok) {
         std::string result_str = util::FormatDouble(res.value);
@@ -55,6 +99,7 @@ static int RunHeadless(const std::string& expr, bool print_only_value, HistoryCo
 int main(int argc, char* argv[]) {
     bool print_only_value = false;
     std::string expr_arg = "";
+    std::string exchange_arg = "";
 
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
@@ -67,6 +112,12 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--expr" && i + 1 < argc) {
             expr_arg = argv[i + 1];
             i++; // skip expression value
+        } else if (arg == "--exchange" && i + 1 < argc) {
+            exchange_arg = argv[i + 1];
+            i++; // skip exchange format
+        } else if (expr_arg.empty() && arg.find("--") != 0) {
+            // Support passing raw expression without --expr, e.g. calc_cli "2 + 2"
+            expr_arg = arg;
         }
     }
 
@@ -78,9 +129,17 @@ int main(int argc, char* argv[]) {
     }
     HistoryController history_ctrl(history_repo);
 
+    // Initialize Exchange Database and Controller
+    std::string exch_db_path = GetExchangeRateDatabasePath();
+    ExchangeRate exch_repo(exch_db_path);
+    if (!exch_repo.Initialize()) {
+        std::cerr << "Warning: Failed to initialize exchange rate database." << std::endl;
+    }
+    ExchangeRateController exch_ctrl(exch_repo);
+
     // 1. Explicit headless mode via arguments (takes precedence)
     if (!expr_arg.empty()) {
-        return RunHeadless(expr_arg, print_only_value, history_ctrl);
+        return RunHeadless(expr_arg, print_only_value, history_ctrl, exch_ctrl, exchange_arg);
     }
 
     // 2. Check for piped input (stdin is not a terminal)
@@ -88,7 +147,7 @@ int main(int argc, char* argv[]) {
         std::string expr;
         std::getline(std::cin, expr);
         if (!expr.empty()) {
-            return RunHeadless(expr, print_only_value, history_ctrl);
+            return RunHeadless(expr, print_only_value, history_ctrl, exch_ctrl, exchange_arg);
         }
     }
     using namespace ftxui;
@@ -97,7 +156,7 @@ int main(int argc, char* argv[]) {
 
     AppState state;
     Calculator calc;
-    AppController controller(state, calc, history_ctrl,
+    AppController controller(state, calc, history_ctrl, exch_ctrl,
                              [&screen] { screen.ExitLoopClosure()(); });
     App app(state, controller);
 

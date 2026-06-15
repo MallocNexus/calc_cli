@@ -2,6 +2,9 @@
 
 #include <cstddef>
 #include <string>
+#include <functional>
+
+using RateResolver = std::function<double(const std::string&, const std::string&)>;
 
 namespace model::internal {
 
@@ -10,14 +13,15 @@ namespace model::internal {
 // Recursive descent parser for infix arithmetic expressions.
 //
 // Grammar:
-//   expr    = term   (('+' | '-') term)*
+//   expr    = sum_expr [ "exchange" "(" IDENTIFIER "," IDENTIFIER ")" ]
+//   sum_expr = term   (('+' | '-') term)*
 //   term    = factor (('*' | '/') factor)*
 //   factor  = ('+' | '-')? primary
-//   primary = NUMBER | '(' expr ')'
+//   primary = NUMBER | '(' expr ')' | "exchange" "(" IDENTIFIER "," IDENTIFIER ")"
 //   NUMBER  = [0-9]+ ('.' [0-9]+)?
 //
 // Usage:
-//   Parser p(input);
+//   Parser p(input, resolver);
 //   double result = p.ParseExpr();  // throws std::runtime_error on syntax error
 //   size_t end    = p.Position();   // inspect for trailing garbage
 //
@@ -26,7 +30,7 @@ namespace model::internal {
 // ---------------------------------------------------------------------------
 class Parser {
   public:
-    explicit Parser(const std::string& input);
+    explicit Parser(const std::string& input, RateResolver resolver = nullptr);
 
     // Parses a complete expression and returns its numeric value.
     // Throws std::runtime_error with a human-readable message on any syntax
@@ -40,6 +44,7 @@ class Parser {
   private:
     const std::string& input_;
     size_t pos_;
+    RateResolver rate_resolver_;
 
     // Low-level character access.
     char Peek() const;
@@ -47,10 +52,12 @@ class Parser {
     void SkipWhitespace();
 
     // Grammar rule implementations (call each other recursively).
+    double ParseSumExpression();
     double ParseTerm();
     double ParseFactor();
     double ParsePrimary();
     double ParseNumber();
+    std::string ParseCurrency();
 };
 
 }  // namespace model::internal

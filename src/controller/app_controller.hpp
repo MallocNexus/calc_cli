@@ -11,6 +11,7 @@
 // of this header. The full definition is only needed in app_controller.cpp.
 class Calculator;
 class HistoryController;
+class ExchangeRateController;
 
 // ---------------------------------------------------------------------------
 // AppController
@@ -22,6 +23,7 @@ class AppController {
   public:
     AppController(AppState& state, Calculator& calc,
                   HistoryController& history_ctrl,
+                  ExchangeRateController& exch_rate_ctrl,
                   std::function<void()> on_quit);
 
     // Called by the view in response to user input events:
@@ -40,6 +42,7 @@ class AppController {
     AppState& state_;
     Calculator& calc_;
     HistoryController& history_ctrl_;
+    ExchangeRateController& exch_rate_ctrl_;
     std::function<void()> on_quit_;
 
 };

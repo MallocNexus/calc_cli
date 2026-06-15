@@ -28,7 +28,7 @@ class App {
     AppController& controller_;
 
     // Top-level horizontal menu entries.
-    std::vector<std::string> top_menu_entries_ = {"File", "Edit", "Help"};
+    std::vector<std::string> top_menu_entries_ = {"File", "Edit", "Exchange", "Help"};
     int top_menu_selected_ = 0;
 
     // Sub-menu entries for each top-level item.
@@ -37,6 +37,9 @@ class App {
 
     std::vector<std::string> edit_entries_ = {"Clear Input", "Clear History"};
     int edit_selected_ = 0;
+
+    std::vector<std::string> exchange_entries_ = {"AUD -> USD", "Custom"};
+    int exchange_selected_ = 0;
 
     std::vector<std::string> help_entries_ = {"Version"};
     int help_selected_ = 0;
