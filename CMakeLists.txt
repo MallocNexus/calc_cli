@@ -106,7 +106,18 @@ target_link_libraries(calc_cli PRIVATE app_lib)
 # ---------------------------------------------------------------------------
 # Test executable — can link any layer independently to test in isolation
 # ---------------------------------------------------------------------------
-add_executable(run_tests tests/test_main.cpp)
+add_executable(run_tests
+    tests/util/test_formatting.cpp
+    tests/model/test_calculator.cpp
+    tests/model/test_parser.cpp
+    tests/model/test_history_repository.cpp
+    tests/model/test_exchange_rate.cpp
+    tests/controller/test_app_controller.cpp
+    tests/controller/test_history_controller.cpp
+    tests/controller/test_exchange_rate_controller.cpp
+    tests/view/test_app.cpp
+    tests/view/test_custom_exchange.cpp
+)
 target_link_libraries(run_tests PRIVATE
     Catch2::Catch2WithMain
     app_lib
