@@ -25,6 +25,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+find_package(SQLite3 REQUIRED)
+
 # ---------------------------------------------------------------------------
 # Utility library (no dependencies)
 # ---------------------------------------------------------------------------
@@ -39,15 +41,19 @@ target_include_directories(util_lib PUBLIC src/)
 add_library(calc_lib
     src/model/calculator.cpp
     src/model/parser.cpp
+    src/model/history_repository.cpp
 )
 target_include_directories(calc_lib PUBLIC src/)
-target_link_libraries(calc_lib PUBLIC util_lib)
+target_link_libraries(calc_lib PUBLIC util_lib SQLite3::SQLite3)
 
 # ---------------------------------------------------------------------------
 # Layer 2: Controller  (no FTXUI dependency)
 # Headers accessed as: #include "controller/app_controller.hpp"
 # ---------------------------------------------------------------------------
-add_library(controller_lib src/controller/app_controller.cpp)
+add_library(controller_lib
+    src/controller/app_controller.cpp
+    src/controller/history_controller.cpp
+)
 target_include_directories(controller_lib PUBLIC src/)
 target_link_libraries(controller_lib PUBLIC calc_lib util_lib)
 
