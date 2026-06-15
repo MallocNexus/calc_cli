@@ -17,18 +17,10 @@ struct EvaluationResult {
 // This class has NO FTXUI dependency and can be tested in complete isolation.
 class Calculator {
   public:
-    // Evaluates `expression` and appends to history on success.
+    // Evaluates `expression`.
     EvaluationResult Evaluate(const std::string& expression);
 
-    // Clears the evaluation history.
-    void ClearHistory();
-
-    // Returns all past evaluations as (expression, result_string) pairs.
-    const std::vector<std::pair<std::string, std::string>>& GetHistory() const;
-
   private:
-    std::vector<std::pair<std::string, std::string>> history_;
-
     // Internal recursive descent parser.
     EvaluationResult ParseAndEvaluate(const std::string& expr);
 };

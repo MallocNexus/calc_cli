@@ -10,6 +10,7 @@
 // Forward declaration — avoids pulling in calculator.hpp into every consumer
 // of this header. The full definition is only needed in app_controller.cpp.
 class Calculator;
+class HistoryController;
 
 // ---------------------------------------------------------------------------
 // AppController
@@ -20,6 +21,7 @@ class Calculator;
 class AppController {
   public:
     AppController(AppState& state, Calculator& calc,
+                  HistoryController& history_ctrl,
                   std::function<void()> on_quit);
 
     // Called by the view in response to user input events:
@@ -37,6 +39,7 @@ class AppController {
   private:
     AppState& state_;
     Calculator& calc_;
+    HistoryController& history_ctrl_;
     std::function<void()> on_quit_;
 
 };

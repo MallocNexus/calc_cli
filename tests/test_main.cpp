@@ -3,7 +3,9 @@
 
 #include "model/app_state.hpp"
 #include "model/calculator.hpp"
+#include "model/history_repository.hpp"
 #include "controller/app_controller.hpp"
+#include "controller/history_controller.hpp"
 #include "view/app.hpp"
 #include "util/formatting.hpp"
 
@@ -143,28 +145,29 @@ TEST_CASE("Calculator — error cases", "[calculator]") {
     }
 }
 
-TEST_CASE("Calculator — history", "[calculator]") {
-    Calculator calc;
+TEST_CASE("HistoryRepository & HistoryController — persistence", "[history]") {
+    HistoryRepository repo(":memory:");
+    REQUIRE(repo.Initialize());
+    HistoryController history_ctrl(repo);
 
-    SECTION("History is empty initially") { REQUIRE(calc.GetHistory().empty()); }
-
-    SECTION("Successful evaluations are recorded") {
-        calc.Evaluate("1 + 1");
-        calc.Evaluate("2 * 3");
-        REQUIRE(calc.GetHistory().size() == 2);
-        REQUIRE(calc.GetHistory()[0].first == "1 + 1");
-        REQUIRE(calc.GetHistory()[1].first == "2 * 3");
+    SECTION("History is empty initially") {
+        REQUIRE(history_ctrl.GetHistory().empty());
     }
 
-    SECTION("Failed evaluations are NOT recorded") {
-        calc.Evaluate("bad input");
-        REQUIRE(calc.GetHistory().empty());
+    SECTION("Successful evaluations are recorded") {
+        history_ctrl.OnSaveHistory("1 + 1", "2");
+        history_ctrl.OnSaveHistory("2 * 3", "6");
+        REQUIRE(history_ctrl.GetHistory().size() == 2);
+        REQUIRE(history_ctrl.GetHistory()[0].first == "1 + 1");
+        REQUIRE(history_ctrl.GetHistory()[0].second == "2");
+        REQUIRE(history_ctrl.GetHistory()[1].first == "2 * 3");
+        REQUIRE(history_ctrl.GetHistory()[1].second == "6");
     }
 
     SECTION("ClearHistory empties the record") {
-        calc.Evaluate("1 + 1");
-        calc.ClearHistory();
-        REQUIRE(calc.GetHistory().empty());
+        history_ctrl.OnSaveHistory("1 + 1", "2");
+        history_ctrl.OnClearHistory();
+        REQUIRE(history_ctrl.GetHistory().empty());
     }
 }
 
@@ -175,7 +178,10 @@ TEST_CASE("Calculator — history", "[calculator]") {
 TEST_CASE("AppController — OnEvaluate", "[controller]") {
     AppState state;
     Calculator calc;
-    AppController controller(state, calc, [] {});
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
+    AppController controller(state, calc, history_ctrl, [] {});
 
     SECTION("Success writes formatted result to state") {
         state.expression_input = "3 + 4";
@@ -202,7 +208,10 @@ TEST_CASE("AppController — OnEvaluate", "[controller]") {
 TEST_CASE("AppController — OnClear", "[controller]") {
     AppState state;
     Calculator calc;
-    AppController controller(state, calc, [] {});
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
+    AppController controller(state, calc, history_ctrl, [] {});
 
     state.expression_input = "some expr";
     state.result_display = "= 42";
@@ -220,8 +229,11 @@ TEST_CASE("AppController — OnClear", "[controller]") {
 TEST_CASE("AppController — OnQuit", "[controller]") {
     AppState state;
     Calculator calc;
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
     bool quit_called = false;
-    AppController controller(state, calc, [&] { quit_called = true; });
+    AppController controller(state, calc, history_ctrl, [&] { quit_called = true; });
 
     controller.OnQuit();
     REQUIRE(quit_called);
@@ -230,7 +242,10 @@ TEST_CASE("AppController — OnQuit", "[controller]") {
 TEST_CASE("AppController — modal flags", "[controller]") {
     AppState state;
     Calculator calc;
-    AppController controller(state, calc, [] {});
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
+    AppController controller(state, calc, history_ctrl, [] {});
 
     SECTION("Version modal open/close") {
         REQUIRE_FALSE(state.show_version_modal);
@@ -244,9 +259,12 @@ TEST_CASE("AppController — modal flags", "[controller]") {
 TEST_CASE("AppController — OnClearHistory", "[controller]") {
     AppState state;
     Calculator calc;
-    AppController controller(state, calc, [] {});
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
+    AppController controller(state, calc, history_ctrl, [] {});
 
-    calc.Evaluate("1 + 1");
+    history_ctrl.OnSaveHistory("1 + 1", "2");
     REQUIRE_FALSE(controller.GetHistory().empty());
 
     controller.OnClearHistory();
@@ -271,14 +289,19 @@ static auto MakeApp(bool* quit_called = nullptr) {
     struct Fixture {
         AppState state;
         Calculator calc;
+        std::unique_ptr<HistoryRepository> history_repo;
+        std::unique_ptr<HistoryController> history_ctrl;
         std::unique_ptr<AppController> controller;
         std::unique_ptr<App> app;
         ftxui::Component comp;
     };
     auto f = std::make_shared<Fixture>();
+    f->history_repo = std::make_unique<HistoryRepository>(":memory:");
+    f->history_repo->Initialize();
+    f->history_ctrl = std::make_unique<HistoryController>(*f->history_repo);
     bool* qc = quit_called;
     f->controller = std::make_unique<AppController>(
-        f->state, f->calc, [qc] {
+        f->state, f->calc, *f->history_ctrl, [qc] {
             if (qc) *qc = true;
         });
     f->app = std::make_unique<App>(f->state, *f->controller);
@@ -327,7 +350,7 @@ TEST_CASE("App — Edit -> Clear via menu", "[app]") {
 
 TEST_CASE("App — Edit -> Clear History via menu", "[app]") {
     auto f = MakeApp();
-    f->calc.Evaluate("1 + 1");
+    f->history_ctrl->OnSaveHistory("1 + 1", "2");
     REQUIRE_FALSE(f->controller->GetHistory().empty());
 
     f->comp->OnEvent(Event::ArrowRight);   // File -> Edit

@@ -37,16 +37,9 @@ EvaluationResult Calculator::Evaluate(const std::string& expression) {
             return {false, 0.0, "Result is not finite"};
         }
 
-        history_.emplace_back(expression, util::FormatDouble(value));
         return {true, value, ""};
 
     } catch (const std::exception& e) {
         return {false, 0.0, e.what()};
     }
-}
-
-void Calculator::ClearHistory() { history_.clear(); }
-
-const std::vector<std::pair<std::string, std::string>>& Calculator::GetHistory() const {
-    return history_;
 }

@@ -1,4 +1,5 @@
 #include "controller/app_controller.hpp"
+#include "controller/history_controller.hpp"
 #include "model/calculator.hpp"
 #include "util/formatting.hpp"
 
@@ -10,8 +11,9 @@
 // ---------------------------------------------------------------------------
 
 AppController::AppController(AppState& state, Calculator& calc,
+                             HistoryController& history_ctrl,
                              std::function<void()> on_quit)
-    : state_(state), calc_(calc), on_quit_(on_quit) {}
+    : state_(state), calc_(calc), history_ctrl_(history_ctrl), on_quit_(on_quit) {}
 
 void AppController::OnEvaluate() {
     std::string formatted = util::FormatExpression(state_.expression_input);
@@ -19,8 +21,10 @@ void AppController::OnEvaluate() {
 
     EvaluationResult res = calc_.Evaluate(formatted);
     if (res.ok) {
-        state_.result_display = "= " + util::FormatDouble(res.value);
+        std::string result_str = util::FormatDouble(res.value);
+        state_.result_display = "= " + result_str;
         state_.error_state = false;
+        history_ctrl_.OnSaveHistory(formatted, result_str);
     } else {
         state_.result_display = "Error: " + res.error;
         state_.error_state = true;
@@ -36,7 +40,7 @@ void AppController::OnClear() {
 
 void AppController::OnQuit() { on_quit_(); }
 
-void AppController::OnClearHistory() { calc_.ClearHistory(); }
+void AppController::OnClearHistory() { history_ctrl_.OnClearHistory(); }
 
 void AppController::OnOpenVersion() { state_.show_version_modal = true; }
 
@@ -44,5 +48,5 @@ void AppController::OnCloseVersion() { state_.show_version_modal = false; }
 
 const std::vector<std::pair<std::string, std::string>>&
 AppController::GetHistory() const {
-    return calc_.GetHistory();
+    return history_ctrl_.GetHistory();
 }
