@@ -1,9 +1,11 @@
 #include "view/app.hpp"
+#include "view/custom_exchange.hpp"
 #include "controller/app_controller.hpp"
 #include "model/app_state.hpp"
 
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <fstream>
 
 using namespace ftxui;
 
@@ -15,7 +17,7 @@ App::App(AppState& state, AppController& controller)
     : state_(state), controller_(controller) {
 
     // ------------------------------------------------------------------
-    // Top-level horizontal animated menu: File | Edit | Help
+    // Top-level horizontal animated menu: File | Edit | Exchange | Help
     // ------------------------------------------------------------------
     auto top_menu = Menu(&top_menu_entries_, &top_menu_selected_,
                          MenuOption::HorizontalAnimated());
@@ -76,6 +78,21 @@ App::App(AppState& state, AppController& controller)
     auto edit_menu = Menu(&edit_entries_, &edit_selected_, edit_option);
 
     // ------------------------------------------------------------------
+    // Exchange sub-menu: AUD -> USD | Custom
+    // ------------------------------------------------------------------
+    MenuOption exchange_option = MenuOption::HorizontalAnimated();
+    exchange_option.on_enter = [this] {
+        if (exchange_selected_ == EXCHANGE_AUD_USD) {
+            std::string inserted = "exchange(AUD, USD)";
+            state_.expression_input.insert(state_.cursor_position, inserted);
+            state_.cursor_position += inserted.size();
+        } else if (exchange_selected_ == EXCHANGE_CUSTOM) {
+            state_.show_custom_modal = true;
+        }
+    };
+    auto exchange_menu = Menu(&exchange_entries_, &exchange_selected_, exchange_option);
+
+    // ------------------------------------------------------------------
     // Help sub-menu: Version
     // ------------------------------------------------------------------
     MenuOption help_option = MenuOption::HorizontalAnimated();
@@ -90,7 +107,7 @@ App::App(AppState& state, AppController& controller)
     // Compose layout
     // ------------------------------------------------------------------
     auto tab_container =
-        Container::Tab({file_menu, edit_menu, help_menu}, &top_menu_selected_);
+        Container::Tab({file_menu, edit_menu, exchange_menu, help_menu}, &top_menu_selected_);
 
     auto main_container =
         Container::Vertical({top_menu, tab_container, expr_input});
@@ -147,9 +164,16 @@ App::App(AppState& state, AppController& controller)
     });
 
     // ------------------------------------------------------------------
+    // Custom Exchange Modal (Exchange -> Custom)
+    // ------------------------------------------------------------------
+    custom_exchange_ = std::make_shared<view::CustomExchange>(state_);
+    auto custom_modal = custom_exchange_->GetComponent();
+
+    // ------------------------------------------------------------------
     // Stack modals on top of the main view
     // ------------------------------------------------------------------
-    component_ = Modal(main_renderer, version_modal, &state_.show_version_modal);
+    auto component_temp = Modal(main_renderer, version_modal, &state_.show_version_modal);
+    component_ = Modal(component_temp, custom_modal, &state_.show_custom_modal);
 }
 
 ftxui::Component App::GetComponent() { return component_; }

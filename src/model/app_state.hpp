@@ -17,6 +17,11 @@ struct AppState {
 
     // Modal visibility — stored here so tests can assert them directly.
     bool show_version_modal = false;
+
+    // Custom Exchange Modal State
+    bool show_custom_modal = false;
+    std::string custom_source_input = "";
+    std::string custom_target_input = "";
 };
 
 // ---------------------------------------------------------------------------
@@ -29,6 +34,9 @@ enum MenuIndex {
 
     EDIT_CLEAR_INPUT = 0,
     EDIT_CLEAR_HISTORY = 1,
+
+    EXCHANGE_AUD_USD = 0,
+    EXCHANGE_CUSTOM = 1,
 
     HELP_VERSION = 0,
 };

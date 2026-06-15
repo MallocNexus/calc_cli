@@ -3,6 +3,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <functional>
+
+using RateResolver = std::function<double(const std::string&, const std::string&)>;
 
 // Result of a single expression evaluation.
 // On success: ok == true and value holds the computed result.
@@ -18,7 +21,7 @@ struct EvaluationResult {
 class Calculator {
   public:
     // Evaluates `expression`.
-    EvaluationResult Evaluate(const std::string& expression);
+    EvaluationResult Evaluate(const std::string& expression, RateResolver resolver = nullptr);
 
   private:
     // Internal recursive descent parser.

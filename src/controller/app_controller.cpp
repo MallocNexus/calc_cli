@@ -1,5 +1,6 @@
 #include "controller/app_controller.hpp"
 #include "controller/history_controller.hpp"
+#include "controller/exchange_rate_controller.hpp"
 #include "model/calculator.hpp"
 #include "util/formatting.hpp"
 
@@ -12,14 +13,19 @@
 
 AppController::AppController(AppState& state, Calculator& calc,
                              HistoryController& history_ctrl,
+                             ExchangeRateController& exch_rate_ctrl,
                              std::function<void()> on_quit)
-    : state_(state), calc_(calc), history_ctrl_(history_ctrl), on_quit_(on_quit) {}
+    : state_(state), calc_(calc), history_ctrl_(history_ctrl), exch_rate_ctrl_(exch_rate_ctrl), on_quit_(on_quit) {}
 
 void AppController::OnEvaluate() {
     std::string formatted = util::FormatExpression(state_.expression_input);
     state_.expression_input = formatted;
 
-    EvaluationResult res = calc_.Evaluate(formatted);
+    auto resolver = [this](const std::string& base, const std::string& quote) {
+        return exch_rate_ctrl_.GetRate(base, quote);
+    };
+
+    EvaluationResult res = calc_.Evaluate(formatted, resolver);
     if (res.ok) {
         std::string result_str = util::FormatDouble(res.value);
         state_.result_display = "= " + result_str;

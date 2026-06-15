@@ -11,13 +11,13 @@
 // Calculator public interface
 // ---------------------------------------------------------------------------
 
-EvaluationResult Calculator::Evaluate(const std::string& expression) {
+EvaluationResult Calculator::Evaluate(const std::string& expression, RateResolver resolver) {
     if (expression.empty()) {
         return {false, 0.0, "Empty expression"};
     }
 
     try {
-        model::internal::Parser parser(expression);
+        model::internal::Parser parser(expression, resolver);
         double value = parser.ParseExpr();
 
         // Reject trailing garbage after a valid expression (e.g. "3 + 4 abc").
