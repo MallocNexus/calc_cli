@@ -196,3 +196,91 @@ TEST_CASE("App — History Menu bounds validation", "[app][history_menu]") {
     f->comp->OnEvent(Event::Return);
     REQUIRE(f->state.expression_input == "1 + 10");
 }
+
+TEST_CASE("App — History Menu recall and re-evaluation with exchange rate", "[app][history_menu_bug]") {
+    auto f = MakeApp();
+    f->exch_repo->SaveRate("AUD", "USD", 0.65);
+    f->history_ctrl->OnSaveHistory("1 + 1", "2");
+    f->history_ctrl->OnSaveHistory("100 exchange(AUD, USD)", "65");
+
+    f->controller = std::make_unique<AppController>(
+        f->state, f->calc, *f->history_ctrl, *f->exch_ctrl, [] {});
+    f->app = std::make_unique<App>(f->state, *f->controller);
+    f->comp = f->app->GetComponent();
+
+    REQUIRE(f->state.history_menu_entries.size() == 2);
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+
+    // Focus history menu (top_menu -> tab_container -> expr_input -> history_menu)
+    f->comp->OnEvent(Event::ArrowDown); // tab_container
+    f->comp->OnEvent(Event::ArrowDown); // expr_input
+    f->comp->OnEvent(Event::ArrowDown); // history_menu
+
+    // Go down to index 1 ("100 exchange(AUD, USD) = 65")
+    f->comp->OnEvent(Event::ArrowDown);
+    REQUIRE(f->state.selected_history_idx == 1);
+    REQUIRE(f->state.focused_history_idx == 1);
+
+    // Let's recall index 1 ("100 exchange(AUD, USD) = 65").
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.expression_input == "100 exchange(AUD, USD)");
+    // Should reset immediately on recall
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+
+    // Press Enter to evaluate (since we are focused on expr_input)
+    f->comp->OnEvent(Event::Return);
+
+    // Verify it evaluates and appends to history
+    REQUIRE(f->state.history_menu_entries.size() == 3);
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+
+    // Press Down to focus history menu.
+    f->comp->OnEvent(Event::ArrowDown);
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+}
+
+TEST_CASE("App — History Menu recall and evaluation failure resets index", "[app][history_menu_bug]") {
+    auto f = MakeApp();
+    f->history_ctrl->OnSaveHistory("1 + 1", "2");
+    f->history_ctrl->OnSaveHistory("5 + 5", "10");
+
+    f->controller = std::make_unique<AppController>(
+        f->state, f->calc, *f->history_ctrl, *f->exch_ctrl, [] {});
+    f->app = std::make_unique<App>(f->state, *f->controller);
+    f->comp = f->app->GetComponent();
+
+    // Focus history menu
+    f->comp->OnEvent(Event::ArrowDown); // tab_container
+    f->comp->OnEvent(Event::ArrowDown); // expr_input
+    f->comp->OnEvent(Event::ArrowDown); // history_menu
+
+    // Go down to index 1 ("5 + 5 = 10")
+    f->comp->OnEvent(Event::ArrowDown);
+    REQUIRE(f->state.selected_history_idx == 1);
+    REQUIRE(f->state.focused_history_idx == 1);
+
+    // Recall item
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.expression_input == "5 + 5");
+    // Verify it is reset to 0 immediately
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+
+    // Make expression invalid so evaluation fails
+    f->state.expression_input = "5 + 5 +";
+    f->comp->OnEvent(Event::Return); // trigger evaluation (fails)
+
+    REQUIRE(f->state.error_state);
+    
+    // Press Down to focus history menu again
+    f->comp->OnEvent(Event::ArrowDown);
+    REQUIRE(f->state.selected_history_idx == 0);
+    REQUIRE(f->state.focused_history_idx == 0);
+}
+
+
+

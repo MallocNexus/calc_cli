@@ -45,7 +45,7 @@ constexpr std::size_t      kParserExchangeKeywordLen = kParserExchangeKeyword.si
 
 // ── About Details ───────────────────────────────────────────────────────────────
 constexpr std::string_view kAppTitle    = "Terminal calculator built with FTXUI";
-constexpr std::string_view kAppVersion  = "1.0.2";
+constexpr std::string_view kAppVersion  = "1.0.3";
 
 // clang-format on
 }  // namespace calc_cli

@@ -113,6 +113,7 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
         controller_.OnUseSelectedHistory();
         expr_input_base->TakeFocus();
     };
+    history_menu_option.focused_entry = &state_.focused_history_idx;
     history_menu_option.entries_option.transform = [](EntryState s) {
         Element element = text(s.label);
         if (s.focused) {
