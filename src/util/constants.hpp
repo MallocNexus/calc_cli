@@ -16,4 +16,12 @@ constexpr std::string_view kFileSysAppDataFallbackDir     = ".calc_cli";
 constexpr std::string_view kFileSysHistoryDbFilename      = "/calc_history.db";
 constexpr std::string_view kFileSysExchangeRateDbFilename = "/exchange_rate.db";
 
+// ── Exchange Rate API ───────────────────────────────────────────────────────
+constexpr std::string_view kFrankFurterApiBaseUrl             = "https://api.frankfurter.dev/v2/rate/";
+constexpr int              kFrankFurterApiCacheTtlSeconds     = 86400;
+constexpr int              kFrankFurterApiTimeoutMs           = 5000;
+constexpr int              kFrankFurterApiHttpStatusOk        = 200;
+constexpr std::string_view kFrankFurterApiRateJsonKey         = "rate";
+constexpr double           kFrankFurterApiInvalidRateSentinel = 0.0;
+
 }  // namespace calc_cli

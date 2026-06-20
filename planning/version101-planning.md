@@ -6,6 +6,7 @@
 1. **Implementation** — create/update source files
 2. **New test cases** — what to write and where
 3. **Testing & validation** — build, run, verify
+4. **Human review** — engineer confirms changes before proceeding
 
 **Deferred to future pass:** UI strings, error messages, CLI flags, formatting
 → See [`docs/future-refactoring-ideas.md`](file:///Users/mattswart/Source/CPP/calc-cli/docs/future-refactoring-ideas.md)
@@ -83,6 +84,19 @@ grep -n '"HOME"\|"USERPROFILE"\|"/.calc_cli"\|".calc_cli"\|"calc_history.db"\|"e
 # Expected: no matches
 ```
 
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 1.1 begins.
+>
+> Checklist:
+> - [ ] `src/util/constants.hpp` — 6 `kFileSys*` constants look correct
+> - [ ] `src/main.cpp` — `GetDatabasePath()` and `GetExchangeRateDatabasePath()` use constants, no raw literals remain
+> - [ ] `tests/util/test_constants.cpp` — 4 new test cases present and meaningful
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 1 looks good, proceed to 1.1"_
+
 ---
 
 ## Phase 1.1 · Rename `kFs*` → `kFileSys*`
@@ -124,11 +138,26 @@ grep -rn 'kFs[A-Z]' src/ tests/
 # Expected: no matches
 ```
 
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 2 begins.
+>
+> Checklist:
+> - [ ] All 6 constants renamed from `kFs*` → `kFileSys*` in `constants.hpp`
+> - [ ] All call sites updated in `src/main.cpp`
+> - [ ] All test names and references updated in `test_constants.cpp`
+> - [ ] No `kFs[A-Z]` identifiers survive anywhere in `src/` or `tests/`
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 1.1 looks good, proceed to 2"_
+
 ---
 
-## Phase 2 · `kApi*` — Exchange Rate API
+## Phase 2 · `kFrankFurterApi*` — Exchange Rate API
 
 > **6 constants** · Affects: `controller/exchange_rate_controller.cpp`
+> ⚠️ Prefix renamed from `kApi*` → `kFrankFurterApi*` in Phase 2.1 — see below.
 
 ### Step 1 — Implementation
 
@@ -185,6 +214,80 @@ cmake --build build/
 grep -n '86400\|5000\|"https://api.frankfurter\|"rate"\|0\.0' src/controller/exchange_rate_controller.cpp
 # Expected: no matches
 ```
+
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 3 begins.
+>
+> Checklist:
+> - [ ] 6 `kApi*` constants added to `constants.hpp` with correct values
+> - [ ] `exchange_rate_controller.cpp` — all 6 literals replaced, no magic numbers remain
+> - [ ] 6 new `ApiConstants_*` tests added to `test_constants.cpp`
+> - [ ] `CacheTtl_UsesConstant` test added to `test_exchange_rate_controller.cpp`
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 2 looks good, proceed to 2.1"_
+
+---
+
+## Phase 2.1 · Rename `kApi*` → `kFrankFurterApi*`
+
+> **Naming clarity fix** · `kApi` is too generic — `kFrankFurterApi` makes clear these constants
+> are specific to the Frankfurter exchange rate API, not just any API.
+> Affects: `src/util/constants.hpp`, `src/controller/exchange_rate_controller.cpp`,
+> `tests/util/test_constants.cpp`, `tests/controller/test_exchange_rate_controller.cpp`
+
+### Step 1 — Implementation
+
+Rename all 6 constants in `src/util/constants.hpp`:
+
+| Old name | New name |
+|---|---|
+| `kApiBaseUrl` | `kFrankFurterApiBaseUrl` |
+| `kApiCacheTtlSeconds` | `kFrankFurterApiCacheTtlSeconds` |
+| `kApiTimeoutMs` | `kFrankFurterApiTimeoutMs` |
+| `kApiHttpStatusOk` | `kFrankFurterApiHttpStatusOk` |
+| `kApiRateJsonKey` | `kFrankFurterApiRateJsonKey` |
+| `kApiInvalidRateSentinel` | `kFrankFurterApiInvalidRateSentinel` |
+
+Update all call sites in:
+- `src/controller/exchange_rate_controller.cpp`
+- `tests/util/test_constants.cpp`
+- `tests/controller/test_exchange_rate_controller.cpp`
+
+### Step 2 — No new test cases
+
+This is a pure rename — existing `ApiConstants_*` tests already cover the values.
+All test names are updated to use the `FrankFurterApi` prefix for consistency.
+
+### Step 3 — Testing & Validation
+
+```bash
+# Build
+cmake --build build/
+
+# Run constants + controller tests — all must still pass
+./build/run_tests "[constants],[exchange_rate_controller]"
+
+# Confirm no kApi* identifiers survive anywhere in the codebase
+grep -rn 'kApi[A-Z]' src/ tests/
+# Expected: no matches
+```
+
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 3 begins.
+>
+> Checklist:
+> - [ ] All 6 constants renamed from `kApi*` → `kFrankFurterApi*` in `constants.hpp`
+> - [ ] All call sites updated in `exchange_rate_controller.cpp`
+> - [ ] All test names and constant references updated in `test_constants.cpp` and `test_exchange_rate_controller.cpp`
+> - [ ] No `kApi[A-Z]` identifiers survive anywhere in `src/` or `tests/`
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 2.1 looks good, proceed to 3"_
 
 ---
 
@@ -261,6 +364,21 @@ grep -n '"history"\|"expression"\|"result"\|"timestamp"' src/model/history_repos
 # Expected: no matches
 ```
 
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 4 begins.
+>
+> Checklist:
+> - [ ] 9 `kDb*` constants added to `constants.hpp` (5 exchange + 4 history)
+> - [ ] `exchange_rate.cpp` — all SQL string literals replaced
+> - [ ] `history_repository.cpp` — all SQL string literals replaced
+> - [ ] 5 new `DbConstants_*` tests in `test_constants.cpp`
+> - [ ] Schema-matching tests added to `test_exchange_rate.cpp` and `test_history_repository.cpp`
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 3 looks good, proceed to 4"_
+
 ---
 
 ## Phase 4 · `kParser*` — Exchange Keyword
@@ -324,6 +442,21 @@ grep -n '"exchange"\| 8\b' src/model/parser.cpp src/util/formatting.cpp
 # Expected: no matches for hardcoded keyword/length
 ```
 
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Final Integration begins.
+>
+> Checklist:
+> - [ ] 2 `kParser*` constants added to `constants.hpp`, `kParserExchangeKeywordLen` derived from `kParserExchangeKeyword.size()`
+> - [ ] `parser.cpp` — all `"exchange"` literals and magic `8` replaced
+> - [ ] `formatting.cpp` — all `"exchange"` literals and magic `8` replaced
+> - [ ] 3 new `ParserConstants_*` tests in `test_constants.cpp`
+> - [ ] 2 new tests added to `test_parser.cpp`, 1 to `test_formatting.cpp`
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 4 looks good, proceed to Final Integration"_
+
 ---
 
 ## Final Integration
@@ -351,7 +484,8 @@ grep -rn '"HOME"\|"USERPROFILE"\|"/.calc_cli"\|86400\|"https://api.frankfurter\|
 | Pre-flight | — | `src/util/constants.hpp` (create) | — |
 | 1 · `kFileSys*` | 6 | `main.cpp` | 4 new in `test_constants.cpp` |
 | 1.1 · Rename `kFs*` → `kFileSys*` | — | `constants.hpp`, `main.cpp`, `test_constants.cpp` | No new tests (pure rename) |
-| 2 · `kApi*` | 6 | `exchange_rate_controller.cpp` | 6 new in `test_constants.cpp`, 1 in `test_exchange_rate_controller.cpp` |
+| 2 · `kFrankFurterApi*` | 6 | `exchange_rate_controller.cpp` | 6 new in `test_constants.cpp`, 1 in `test_exchange_rate_controller.cpp` |
+| 2.1 · Rename `kApi*` → `kFrankFurterApi*` | — | `constants.hpp`, `exchange_rate_controller.cpp`, `test_constants.cpp`, `test_exchange_rate_controller.cpp` | No new tests (pure rename) |
 | 3 · `kDb*` | 9 | `exchange_rate.cpp`, `history_repository.cpp` | 5 new in `test_constants.cpp`, 1 each in `test_exchange_rate.cpp` and `test_history_repository.cpp` |
 | 4 · `kParser*` | 2 | `parser.cpp`, `formatting.cpp` | 3 new in `test_constants.cpp`, 2 in `test_parser.cpp`, 1 in `test_formatting.cpp` |
 | **Total** | **23** | **7 files updated, 1 created** | **~23 new test cases** |

@@ -46,3 +46,39 @@ TEST_CASE("FileSysConstants — path concatenation produces correct full paths",
                               + std::string(calc_cli::kFileSysExchangeRateDbFilename);
     REQUIRE(exchange_path == "/home/user/.calc_cli/exchange_rate.db");
 }
+
+// ── Phase 2: Exchange Rate API Constants ────────────────────────────────────
+
+TEST_CASE("FrankFurterApiConstants — base URL is well-formed", "[constants][api]") {
+    auto starts_with = [](std::string_view sv, std::string_view prefix) {
+        return sv.size() >= prefix.size() &&
+               sv.compare(0, prefix.size(), prefix) == 0;
+    };
+    auto ends_with = [](std::string_view sv, std::string_view suffix) {
+        return sv.size() >= suffix.size() &&
+               sv.compare(sv.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+    REQUIRE(starts_with(calc_cli::kFrankFurterApiBaseUrl, "https://"));
+    REQUIRE(ends_with(calc_cli::kFrankFurterApiBaseUrl, "/"));
+}
+
+TEST_CASE("FrankFurterApiConstants — cache TTL equals 24 hours in seconds", "[constants][api]") {
+    REQUIRE(calc_cli::kFrankFurterApiCacheTtlSeconds == 86400);
+    REQUIRE(calc_cli::kFrankFurterApiCacheTtlSeconds == 24 * 60 * 60);
+}
+
+TEST_CASE("FrankFurterApiConstants — timeout is positive", "[constants][api]") {
+    REQUIRE(calc_cli::kFrankFurterApiTimeoutMs > 0);
+}
+
+TEST_CASE("FrankFurterApiConstants — HTTP status OK is 200", "[constants][api]") {
+    REQUIRE(calc_cli::kFrankFurterApiHttpStatusOk == 200);
+}
+
+TEST_CASE("FrankFurterApiConstants — rate JSON key is correct", "[constants][api]") {
+    REQUIRE(calc_cli::kFrankFurterApiRateJsonKey == "rate");
+}
+
+TEST_CASE("FrankFurterApiConstants — invalid rate sentinel is zero", "[constants][api]") {
+    REQUIRE(calc_cli::kFrankFurterApiInvalidRateSentinel == 0.0);
+}
