@@ -127,3 +127,51 @@ TEST_CASE("AppController — OnClearHistory", "[controller]") {
     controller.OnClearHistory();
     REQUIRE(controller.GetHistory().empty());
 }
+
+TEST_CASE("AppController — History Menu Synchronization and Recall", "[controller][history_menu]") {
+    AppState state;
+    Calculator calc;
+    HistoryRepository repo(":memory:");
+    repo.Initialize();
+    HistoryController history_ctrl(repo);
+
+    ExchangeRate exch_repo(":memory:");
+    exch_repo.Initialize();
+    ExchangeRateController exch_ctrl(exch_repo);
+
+    // Initial state check
+    {
+        AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
+        REQUIRE(state.history_menu_entries.empty());
+        REQUIRE(state.selected_history_idx == 0);
+    }
+
+    // Populate database history first
+    history_ctrl.OnSaveHistory("5 + 5", "10");
+    history_ctrl.OnSaveHistory("2 * 4", "8");
+
+    AppController controller(state, calc, history_ctrl, exch_ctrl, [] {});
+    // Verify sync on startup
+    REQUIRE(state.history_menu_entries.size() == 2);
+    REQUIRE(state.history_menu_entries[0] == "5 + 5 = 10");
+    REQUIRE(state.history_menu_entries[1] == "2 * 4 = 8");
+    REQUIRE(state.selected_history_idx == 1); // Defaults to last item
+
+    // Verify sync on new evaluation
+    state.expression_input = "10 / 2";
+    controller.OnEvaluate();
+    REQUIRE(state.history_menu_entries.size() == 3);
+    REQUIRE(state.history_menu_entries[2] == "10 / 2 = 5");
+    REQUIRE(state.selected_history_idx == 2);
+
+    // Verify recall selection
+    state.selected_history_idx = 0; // "5 + 5 = 10"
+    controller.OnUseSelectedHistory();
+    REQUIRE(state.expression_input == "5 + 5");
+    REQUIRE(state.cursor_position == 5);
+
+    // Verify sync on clear history
+    controller.OnClearHistory();
+    REQUIRE(state.history_menu_entries.empty());
+    REQUIRE(state.selected_history_idx == 0);
+}
