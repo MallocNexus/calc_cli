@@ -108,9 +108,26 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
     auto tab_container =
         Container::Tab({file_menu, edit_menu, exchange_menu, help_menu}, &top_menu_selected_);
 
-    auto main_container = Container::Vertical({top_menu, tab_container, expr_input});
+    auto history_menu_option = MenuOption::Vertical();
+    history_menu_option.on_enter = [this, expr_input_base] {
+        controller_.OnUseSelectedHistory();
+        expr_input_base->TakeFocus();
+    };
+    history_menu_option.entries_option.transform = [](EntryState s) {
+        Element element = text(s.label);
+        if (s.focused) {
+            element |= color(Color::Green) | bold;
+        } else if (s.active) {
+            element |= color(Color::Green);
+        }
+        return element;
+    };
 
-    auto main_renderer = Renderer(main_container, [this, top_menu, tab_container, expr_input] {
+    auto history_menu = Menu(&state_.history_menu_entries, &state_.selected_history_idx, history_menu_option);
+
+    auto main_container = Container::Vertical({top_menu, tab_container, expr_input, history_menu});
+
+    auto main_renderer = Renderer(main_container, [this, top_menu, tab_container, expr_input, history_menu] {
         Element result_elem;
         if (state_.result_display.empty()) {
             result_elem = text("") | dim;
@@ -120,13 +137,11 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
             result_elem = text(state_.result_display) | color(Color::Green) | bold;
         }
 
-        Elements hist_rows;
-        const auto& hist = controller_.GetHistory();
-        if (!hist.empty()) {
-            hist_rows.push_back(text("History:") | dim);
-            for (const auto& [expr, res] : hist) {
-                hist_rows.push_back(text("  " + expr + "  =  " + res));
-            }
+        Element history_elem;
+        if (state_.history_menu_entries.empty()) {
+            history_elem = text("  No history yet") | dim;
+        } else {
+            history_elem = history_menu->Render() | yframe | flex;
         }
 
         return vbox({
@@ -138,7 +153,9 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
                    separator(),
                    hbox({text("   "), result_elem}),
                    separator(),
-                   vbox(std::move(hist_rows)) | yframe | flex,
+                   text(" History:") | dim,
+                   separator(),
+                   history_elem,
                }) |
                border;
     });

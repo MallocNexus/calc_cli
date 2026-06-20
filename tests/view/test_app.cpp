@@ -132,3 +132,64 @@ TEST_CASE("App — Exchange -> AUD -> USD inserts shorthand", "[app]") {
 
     REQUIRE(f->state.expression_input == "100 exchange(AUD, USD)");
 }
+
+TEST_CASE("App — History Menu navigation and recall", "[app][history_menu]") {
+    auto f = MakeApp();
+    f->history_ctrl->OnSaveHistory("5 + 5", "10");
+    f->history_ctrl->OnSaveHistory("3 * 3", "9");
+    
+    // Re-create controller/app to synchronize startup database entries
+    f->controller = std::make_unique<AppController>(
+        f->state, f->calc, *f->history_ctrl, *f->exch_ctrl, [] {});
+    f->app = std::make_unique<App>(f->state, *f->controller);
+    f->comp = f->app->GetComponent();
+
+    REQUIRE(f->state.history_menu_entries.size() == 2);
+    REQUIRE(f->state.selected_history_idx == 1);
+
+    // Navigate focus down: top_menu -> tab_container -> expr_input -> history_menu
+    f->comp->OnEvent(Event::ArrowDown); // tab_container
+    f->comp->OnEvent(Event::ArrowDown); // expr_input
+    f->comp->OnEvent(Event::ArrowDown); // history_menu
+
+    // Navigate up in the history list (from 1 -> 0)
+    f->comp->OnEvent(Event::ArrowUp);
+    REQUIRE(f->state.selected_history_idx == 0);
+
+    // Confirm choice via Return
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.expression_input == "5 + 5");
+}
+
+TEST_CASE("App — History Menu bounds validation", "[app][history_menu]") {
+    auto f = MakeApp();
+    for (int i = 0; i < 20; ++i) {
+        f->history_ctrl->OnSaveHistory("1 + " + std::to_string(i), std::to_string(1 + i));
+    }
+    f->controller = std::make_unique<AppController>(
+        f->state, f->calc, *f->history_ctrl, *f->exch_ctrl, [] {});
+    f->app = std::make_unique<App>(f->state, *f->controller);
+    f->comp = f->app->GetComponent();
+
+    REQUIRE(f->state.history_menu_entries.size() == 20);
+    REQUIRE(f->state.selected_history_idx == 19);
+
+    // Navigate focus down: top_menu -> tab_container -> expr_input -> history_menu
+    f->comp->OnEvent(Event::ArrowDown); // tab_container
+    f->comp->OnEvent(Event::ArrowDown); // expr_input
+    f->comp->OnEvent(Event::ArrowDown); // history_menu
+
+    // ArrowDown at bounds should be blocked
+    f->comp->OnEvent(Event::ArrowDown);
+    REQUIRE(f->state.selected_history_idx == 19);
+
+    // Navigate Up 10 times
+    for (int i = 0; i < 10; ++i) {
+        f->comp->OnEvent(Event::ArrowUp);
+    }
+    REQUIRE(f->state.selected_history_idx == 9);
+
+    // Confirm choice at index 9 (which is "1 + 9 = 10")
+    f->comp->OnEvent(Event::Return);
+    REQUIRE(f->state.expression_input == "1 + 9");
+}
