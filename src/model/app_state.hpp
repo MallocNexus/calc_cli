@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // AppState
@@ -22,6 +23,10 @@ struct AppState {
     bool show_custom_modal = false;
     std::string custom_source_input = "";
     std::string custom_target_input = "";
+
+    // Calculation History Menu/Scrolling State
+    std::vector<std::string> history_menu_entries;
+    int selected_history_idx = 0;
 };
 
 // ---------------------------------------------------------------------------

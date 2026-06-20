@@ -35,6 +35,9 @@ class AppController {
     void OnOpenVersion();   // Help->Version selected
     void OnCloseVersion();  // Version modal Close button
 
+    // Calculation history actions
+    void OnUseSelectedHistory(); // Copy selected history expression to input
+
     // Read-only access to evaluation history for the view to render.
     const std::vector<std::pair<std::string, std::string>>& GetHistory() const;
 
@@ -45,4 +48,5 @@ class AppController {
     ExchangeRateController& exch_rate_ctrl_;
     std::function<void()> on_quit_;
 
+    void SyncHistoryMenuEntries();
 };
