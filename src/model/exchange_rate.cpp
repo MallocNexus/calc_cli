@@ -1,7 +1,9 @@
 #include "model/exchange_rate.hpp"
+#include "util/constants.hpp"
 #include <iostream>
 #include <filesystem>
 #include <ctime>
+#include <format>
 
 ExchangeRate::ExchangeRate(const std::string& db_path)
     : db_path_(db_path) {}
@@ -29,14 +31,16 @@ bool ExchangeRate::Initialize() {
         return false;
     }
 
-    std::string create_table_sql =
-        "CREATE TABLE IF NOT EXISTS exchange_rates ("
-        "base_currency TEXT NOT NULL,"
-        "quote_currency TEXT NOT NULL,"
-        "rate REAL NOT NULL,"
-        "last_updated INTEGER NOT NULL,"
-        "PRIMARY KEY (base_currency, quote_currency)"
-        ");";
+    std::string create_table_sql = std::format(
+        "CREATE TABLE IF NOT EXISTS {} ({} TEXT NOT NULL, {} TEXT NOT NULL, {} REAL NOT NULL, {} INTEGER NOT NULL, PRIMARY KEY ({}, {}));",
+        calc_cli::kDbExchangeTable,
+        calc_cli::kDbExchangeColBase,
+        calc_cli::kDbExchangeColQuote,
+        calc_cli::kDbExchangeColRate,
+        calc_cli::kDbExchangeColLastUpdated,
+        calc_cli::kDbExchangeColBase,
+        calc_cli::kDbExchangeColQuote
+    );
 
     return ExecuteQuery(create_table_sql);
 }
@@ -44,7 +48,14 @@ bool ExchangeRate::Initialize() {
 bool ExchangeRate::GetCachedRate(const std::string& base, const std::string& quote, CachedRate& out_rate) {
     if (!db_) return false;
 
-    std::string select_sql = "SELECT rate, last_updated FROM exchange_rates WHERE base_currency = ? AND quote_currency = ?;";
+    std::string select_sql = std::format(
+        "SELECT {}, {} FROM {} WHERE {} = ? AND {} = ?;",
+        calc_cli::kDbExchangeColRate,
+        calc_cli::kDbExchangeColLastUpdated,
+        calc_cli::kDbExchangeTable,
+        calc_cli::kDbExchangeColBase,
+        calc_cli::kDbExchangeColQuote
+    );
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, select_sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -68,7 +79,15 @@ bool ExchangeRate::GetCachedRate(const std::string& base, const std::string& quo
 bool ExchangeRate::SaveRate(const std::string& base, const std::string& quote, double rate) {
     if (!db_) return false;
 
-    std::string insert_sql = "INSERT OR REPLACE INTO exchange_rates (base_currency, quote_currency, rate, last_updated) VALUES (?, ?, ?, ?);";
+    std::string insert_sql = std::format(
+        "INSERT OR REPLACE INTO {} ({}, {}, {}, {}) VALUES (?, ?, ?, ?);",
+        calc_cli::kDbExchangeTable,
+        calc_cli::kDbExchangeColBase,
+        calc_cli::kDbExchangeColQuote,
+        calc_cli::kDbExchangeColRate,
+        calc_cli::kDbExchangeColLastUpdated
+    );
+
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, insert_sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {

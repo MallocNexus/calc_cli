@@ -24,4 +24,17 @@ constexpr int              kFrankFurterApiHttpStatusOk        = 200;
 constexpr std::string_view kFrankFurterApiRateJsonKey         = "rate";
 constexpr double           kFrankFurterApiInvalidRateSentinel = 0.0;
 
+// ── Database: Exchange Rate Table ───────────────────────────────────────────
+constexpr std::string_view kDbExchangeTable          = "exchange_rates";
+constexpr std::string_view kDbExchangeColBase        = "base_currency";
+constexpr std::string_view kDbExchangeColQuote       = "quote_currency";
+constexpr std::string_view kDbExchangeColRate        = "rate";
+constexpr std::string_view kDbExchangeColLastUpdated = "last_updated";
+
+// ── Database: History Table ─────────────────────────────────────────────────
+constexpr std::string_view kDbHistoryTable           = "history";
+constexpr std::string_view kDbHistoryColExpression   = "expression";
+constexpr std::string_view kDbHistoryColResult       = "result";
+constexpr std::string_view kDbHistoryColTimestamp    = "timestamp";
+
 }  // namespace calc_cli

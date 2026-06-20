@@ -367,7 +367,7 @@ grep -n '"history"\|"expression"\|"result"\|"timestamp"' src/model/history_repos
 ### Step 4 — Human Review
 
 > [!IMPORTANT]
-> **Stop here.** The engineer must review all changes before Phase 4 begins.
+> **Stop here.** The engineer must review all changes before Phase 3.1 begins.
 >
 > Checklist:
 > - [ ] 9 `kDb*` constants added to `constants.hpp` (5 exchange + 4 history)
@@ -377,7 +377,70 @@ grep -n '"history"\|"expression"\|"result"\|"timestamp"' src/model/history_repos
 > - [ ] Schema-matching tests added to `test_exchange_rate.cpp` and `test_history_repository.cpp`
 > - [ ] All tests pass locally
 >
-> **Confirm with:** _"Phase 3 looks good, proceed to 4"_
+> **Confirm with:** _"Phase 3 looks good, proceed to 3.1"_
+
+---
+
+## Phase 3.1 · `std::format` & C++20 Upgrade
+
+> **C++20 Modernization** · Refactor SQL string concatenation using `std::format`
+> Affects: `CMakeLists.txt`, `src/model/exchange_rate.cpp`, `src/model/history_repository.cpp`
+
+### Step 1 — Implementation
+
+**Update `CMakeLists.txt`:**
+- Change C++ standard from C++17 to C++20:
+  ```cmake
+  set(CMAKE_CXX_STANDARD 20)
+  ```
+
+**Update `src/model/exchange_rate.cpp`:**
+- Add `#include <format>`
+- Refactor the SQL query strings to use `std::format` instead of `+` concatenation.
+  For example, `insert_sql` becomes:
+  ```cpp
+  std::string insert_sql = std::format(
+      "INSERT OR REPLACE INTO {} ({}, {}, {}, {}) VALUES (?, ?, ?, ?);",
+      calc_cli::kDbExchangeTable,
+      calc_cli::kDbExchangeColBase,
+      calc_cli::kDbExchangeColQuote,
+      calc_cli::kDbExchangeColRate,
+      calc_cli::kDbExchangeColLastUpdated
+  );
+  ```
+  And similarly update the `CREATE TABLE` and `SELECT` queries.
+
+**Update `src/model/history_repository.cpp`:**
+- Add `#include <format>`
+- Refactor the SQL query strings (`CREATE TABLE`, `SELECT`, `INSERT`, `DELETE`) to use `std::format`.
+
+### Step 2 — No new test cases
+
+Existing unit tests will verify that formatting does not break any database functionality.
+
+### Step 3 — Testing & Validation
+
+```bash
+# Build (compiles as C++20)
+cmake --build build/
+
+# Run tests
+./build/run_tests
+```
+
+### Step 4 — Human Review
+
+> [!IMPORTANT]
+> **Stop here.** The engineer must review all changes before Phase 4 begins.
+>
+> Checklist:
+> - [ ] `CMakeLists.txt` standard upgraded to 20
+> - [ ] `src/model/exchange_rate.cpp` uses `std::format`
+> - [ ] `src/model/history_repository.cpp` uses `std::format`
+> - [ ] Build succeeds with C++20
+> - [ ] All tests pass locally
+>
+> **Confirm with:** _"Phase 3.1 looks good, proceed to 4"_
 
 ---
 
@@ -487,5 +550,6 @@ grep -rn '"HOME"\|"USERPROFILE"\|"/.calc_cli"\|86400\|"https://api.frankfurter\|
 | 2 · `kFrankFurterApi*` | 6 | `exchange_rate_controller.cpp` | 6 new in `test_constants.cpp`, 1 in `test_exchange_rate_controller.cpp` |
 | 2.1 · Rename `kApi*` → `kFrankFurterApi*` | — | `constants.hpp`, `exchange_rate_controller.cpp`, `test_constants.cpp`, `test_exchange_rate_controller.cpp` | No new tests (pure rename) |
 | 3 · `kDb*` | 9 | `exchange_rate.cpp`, `history_repository.cpp` | 5 new in `test_constants.cpp`, 1 each in `test_exchange_rate.cpp` and `test_history_repository.cpp` |
+| 3.1 · `std::format` & C++20 Upgrade | — | `CMakeLists.txt`, `exchange_rate.cpp`, `history_repository.cpp` | No new tests |
 | 4 · `kParser*` | 2 | `parser.cpp`, `formatting.cpp` | 3 new in `test_constants.cpp`, 2 in `test_parser.cpp`, 1 in `test_formatting.cpp` |
-| **Total** | **23** | **7 files updated, 1 created** | **~23 new test cases** |
+| **Total** | **23** | **8 files updated, 1 created** | **~23 new test cases** |

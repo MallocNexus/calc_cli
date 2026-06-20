@@ -82,3 +82,58 @@ TEST_CASE("FrankFurterApiConstants — rate JSON key is correct", "[constants][a
 TEST_CASE("FrankFurterApiConstants — invalid rate sentinel is zero", "[constants][api]") {
     REQUIRE(calc_cli::kFrankFurterApiInvalidRateSentinel == 0.0);
 }
+
+// ── Phase 3: Database Constants ─────────────────────────────────────────────
+
+TEST_CASE("DbConstants — exchange table name is correct", "[constants][db]") {
+    REQUIRE(calc_cli::kDbExchangeTable == "exchange_rates");
+}
+
+TEST_CASE("DbConstants — exchange column names are non-empty and distinct", "[constants][db]") {
+    REQUIRE_FALSE(calc_cli::kDbExchangeColBase.empty());
+    REQUIRE_FALSE(calc_cli::kDbExchangeColQuote.empty());
+    REQUIRE_FALSE(calc_cli::kDbExchangeColRate.empty());
+    REQUIRE_FALSE(calc_cli::kDbExchangeColLastUpdated.empty());
+
+    // All 4 must be distinct
+    REQUIRE(calc_cli::kDbExchangeColBase        != calc_cli::kDbExchangeColQuote);
+    REQUIRE(calc_cli::kDbExchangeColBase        != calc_cli::kDbExchangeColRate);
+    REQUIRE(calc_cli::kDbExchangeColBase        != calc_cli::kDbExchangeColLastUpdated);
+    REQUIRE(calc_cli::kDbExchangeColQuote       != calc_cli::kDbExchangeColRate);
+    REQUIRE(calc_cli::kDbExchangeColQuote       != calc_cli::kDbExchangeColLastUpdated);
+    REQUIRE(calc_cli::kDbExchangeColRate        != calc_cli::kDbExchangeColLastUpdated);
+}
+
+TEST_CASE("DbConstants — history table name is correct", "[constants][db]") {
+    REQUIRE(calc_cli::kDbHistoryTable == "history");
+}
+
+TEST_CASE("DbConstants — history column names are non-empty and distinct", "[constants][db]") {
+    REQUIRE_FALSE(calc_cli::kDbHistoryColExpression.empty());
+    REQUIRE_FALSE(calc_cli::kDbHistoryColResult.empty());
+    REQUIRE_FALSE(calc_cli::kDbHistoryColTimestamp.empty());
+
+    REQUIRE(calc_cli::kDbHistoryColExpression != calc_cli::kDbHistoryColResult);
+    REQUIRE(calc_cli::kDbHistoryColExpression != calc_cli::kDbHistoryColTimestamp);
+    REQUIRE(calc_cli::kDbHistoryColResult     != calc_cli::kDbHistoryColTimestamp);
+}
+
+TEST_CASE("DbConstants — no column name collisions across both tables", "[constants][db]") {
+    // Exchange and history column names must all be unique across both tables
+    std::string_view exchange_cols[] = {
+        calc_cli::kDbExchangeColBase,
+        calc_cli::kDbExchangeColQuote,
+        calc_cli::kDbExchangeColRate,
+        calc_cli::kDbExchangeColLastUpdated,
+    };
+    std::string_view history_cols[] = {
+        calc_cli::kDbHistoryColExpression,
+        calc_cli::kDbHistoryColResult,
+        calc_cli::kDbHistoryColTimestamp,
+    };
+    for (auto ec : exchange_cols) {
+        for (auto hc : history_cols) {
+            REQUIRE(ec != hc);
+        }
+    }
+}

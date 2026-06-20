@@ -1,5 +1,7 @@
 #include "model/history_repository.hpp"
+#include "util/constants.hpp"
 #include <iostream>
+#include <format>
 
 HistoryRepository::HistoryRepository(const std::string& db_path)
     : db_path_(db_path) {}
@@ -18,20 +20,30 @@ bool HistoryRepository::Initialize() {
     }
 
     // Create table if it doesn't exist
-    std::string create_table_sql = 
-        "CREATE TABLE IF NOT EXISTS history ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "expression TEXT NOT NULL,"
-        "result TEXT NOT NULL,"
-        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"
-        ");";
+    std::string create_table_sql = std::format(
+        "CREATE TABLE IF NOT EXISTS {} ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "{} TEXT NOT NULL, "
+        "{} TEXT NOT NULL, "
+        "{} DATETIME DEFAULT CURRENT_TIMESTAMP"
+        ");",
+        calc_cli::kDbHistoryTable,
+        calc_cli::kDbHistoryColExpression,
+        calc_cli::kDbHistoryColResult,
+        calc_cli::kDbHistoryColTimestamp
+    );
 
     if (!ExecuteQuery(create_table_sql)) {
         return false;
     }
 
     // Load existing history from database into the cache
-    std::string select_sql = "SELECT expression, result FROM history ORDER BY id ASC;";
+    std::string select_sql = std::format(
+        "SELECT {}, {} FROM {} ORDER BY id ASC;",
+        calc_cli::kDbHistoryColExpression,
+        calc_cli::kDbHistoryColResult,
+        calc_cli::kDbHistoryTable
+    );
     sqlite3_stmt* stmt = nullptr;
     rc = sqlite3_prepare_v2(db_, select_sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -57,7 +69,13 @@ bool HistoryRepository::Initialize() {
 bool HistoryRepository::Add(const std::string& expression, const std::string& result) {
     if (!db_) return false;
 
-    std::string insert_sql = "INSERT INTO history (expression, result) VALUES (?, ?);";
+    std::string insert_sql = std::format(
+        "INSERT INTO {} ({}, {}) VALUES (?, ?);",
+        calc_cli::kDbHistoryTable,
+        calc_cli::kDbHistoryColExpression,
+        calc_cli::kDbHistoryColResult
+    );
+
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, insert_sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -83,7 +101,7 @@ bool HistoryRepository::Add(const std::string& expression, const std::string& re
 bool HistoryRepository::Clear() {
     if (!db_) return false;
 
-    std::string delete_sql = "DELETE FROM history;";
+    std::string delete_sql = std::format("DELETE FROM {};", calc_cli::kDbHistoryTable);
     if (!ExecuteQuery(delete_sql)) {
         return false;
     }
