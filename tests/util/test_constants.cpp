@@ -137,3 +137,17 @@ TEST_CASE("DbConstants — no column name collisions across both tables", "[cons
         }
     }
 }
+
+// ── Phase 4: Parser Constants ───────────────────────────────────────────────
+
+TEST_CASE("ParserConstants — keyword value is correct", "[constants][parser]") {
+    REQUIRE(calc_cli::kParserExchangeKeyword == "exchange");
+}
+
+TEST_CASE("ParserConstants — keyword length is derived correctly", "[constants][parser]") {
+    REQUIRE(calc_cli::kParserExchangeKeywordLen == calc_cli::kParserExchangeKeyword.size());
+}
+
+TEST_CASE("ParserConstants — keyword length is exactly 8", "[constants][parser]") {
+    REQUIRE(calc_cli::kParserExchangeKeywordLen == 8);
+}

@@ -27,3 +27,8 @@ TEST_CASE("Util — FormatExpression", "[util]") {
         REQUIRE(util::FormatExpression("exchange(AUD,USD)+5") == "exchange(AUD, USD) + 5");
     }
 }
+
+TEST_CASE("Util — FormatExpression — keyword length validation", "[util][constants]") {
+    REQUIRE(util::FormatExpression("exchange(AUD,USD)") == "exchange(AUD, USD)");
+    REQUIRE(util::FormatExpression("exchang(AUD,USD)") == "exchang (AUD, USD)");
+}

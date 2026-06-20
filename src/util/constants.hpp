@@ -36,5 +36,8 @@ constexpr std::string_view kDbHistoryTable           = "history";
 constexpr std::string_view kDbHistoryColExpression   = "expression";
 constexpr std::string_view kDbHistoryColResult       = "result";
 constexpr std::string_view kDbHistoryColTimestamp    = "timestamp";
+// ── Parser ──────────────────────────────────────────────────────────────────
+constexpr std::string_view kParserExchangeKeyword    = "exchange";
+constexpr std::size_t      kParserExchangeKeywordLen = kParserExchangeKeyword.size();
 
 }  // namespace calc_cli

@@ -38,3 +38,22 @@ TEST_CASE("Parser - exchange function with mock resolver", "[parser]") {
         REQUIRE_THAT(res.value, WithinRel(5.70, 1e-9));
     }
 }
+
+TEST_CASE("Parser — Exchange keyword validation", "[parser][constants]") {
+    auto mock_resolver = [](const std::string& base, const std::string& quote) {
+        if (base == "AUD" && quote == "USD") return 0.70;
+        throw std::runtime_error("Unsupported currency pair");
+    };
+    Calculator calc;
+
+    SECTION("ExchangeKeywordRecognised") {
+        auto res = calc.Evaluate("exchange(AUD, USD)", mock_resolver);
+        REQUIRE(res.ok);
+        REQUIRE_THAT(res.value, WithinRel(0.70, 1e-9));
+    }
+
+    SECTION("PartialKeywordRejected") {
+        auto res = calc.Evaluate("exchang(AUD, USD)", mock_resolver);
+        REQUIRE_FALSE(res.ok);
+    }
+}
