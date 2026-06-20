@@ -1,11 +1,13 @@
 #include "view/app.hpp"
-#include "view/custom_exchange.hpp"
-#include "controller/app_controller.hpp"
-#include "model/app_state.hpp"
 
+#include <fstream>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
-#include <fstream>
+
+#include "controller/app_controller.hpp"
+#include "model/app_state.hpp"
+#include "util/constants.hpp"
+#include "view/custom_exchange.hpp"
 
 using namespace ftxui;
 
@@ -13,14 +15,11 @@ using namespace ftxui;
 // App constructor — pure view: builds layout, wires events to controller.
 // No if/else business logic lives here; every action is a controller call.
 // ---------------------------------------------------------------------------
-App::App(AppState& state, AppController& controller)
-    : state_(state), controller_(controller) {
-
+App::App(AppState& state, AppController& controller) : state_(state), controller_(controller) {
     // ------------------------------------------------------------------
     // Top-level horizontal animated menu: File | Edit | Exchange | Help
     // ------------------------------------------------------------------
-    auto top_menu = Menu(&top_menu_entries_, &top_menu_selected_,
-                         MenuOption::HorizontalAnimated());
+    auto top_menu = Menu(&top_menu_entries_, &top_menu_selected_, MenuOption::HorizontalAnimated());
 
     // ------------------------------------------------------------------
     // Expression input (single-line)
@@ -109,54 +108,51 @@ App::App(AppState& state, AppController& controller)
     auto tab_container =
         Container::Tab({file_menu, edit_menu, exchange_menu, help_menu}, &top_menu_selected_);
 
-    auto main_container =
-        Container::Vertical({top_menu, tab_container, expr_input});
+    auto main_container = Container::Vertical({top_menu, tab_container, expr_input});
 
-    auto main_renderer =
-        Renderer(main_container, [this, top_menu, tab_container, expr_input] {
-            Element result_elem;
-            if (state_.result_display.empty()) {
-                result_elem = text("") | dim;
-            } else if (state_.error_state) {
-                result_elem = text(state_.result_display) | color(Color::Red);
-            } else {
-                result_elem = text(state_.result_display) | color(Color::Green) | bold;
+    auto main_renderer = Renderer(main_container, [this, top_menu, tab_container, expr_input] {
+        Element result_elem;
+        if (state_.result_display.empty()) {
+            result_elem = text("") | dim;
+        } else if (state_.error_state) {
+            result_elem = text(state_.result_display) | color(Color::Red);
+        } else {
+            result_elem = text(state_.result_display) | color(Color::Green) | bold;
+        }
+
+        Elements hist_rows;
+        const auto& hist = controller_.GetHistory();
+        if (!hist.empty()) {
+            hist_rows.push_back(text("History:") | dim);
+            for (const auto& [expr, res] : hist) {
+                hist_rows.push_back(text("  " + expr + "  =  " + res));
             }
+        }
 
-            Elements hist_rows;
-            const auto& hist = controller_.GetHistory();
-            if (!hist.empty()) {
-                hist_rows.push_back(text("History:") | dim);
-                for (const auto& [expr, res] : hist) {
-                    hist_rows.push_back(text("  " + expr + "  =  " + res));
-                }
-            }
-
-            return vbox({
-                       top_menu->Render(),
-                       separator(),
-                       tab_container->Render(),
-                       separator(),
-                       hbox({text(" > "), expr_input->Render()}),
-                       separator(),
-                       hbox({text("   "), result_elem}),
-                       separator(),
-                       vbox(std::move(hist_rows)) | yframe | flex,
-                   }) |
-                   border;
-        });
+        return vbox({
+                   top_menu->Render(),
+                   separator(),
+                   tab_container->Render(),
+                   separator(),
+                   hbox({text(" > "), expr_input->Render()}),
+                   separator(),
+                   hbox({text("   "), result_elem}),
+                   separator(),
+                   vbox(std::move(hist_rows)) | yframe | flex,
+               }) |
+               border;
+    });
 
     // ------------------------------------------------------------------
     // Version modal (Help -> Version)
     // ------------------------------------------------------------------
-    auto version_close =
-        Button("Close", [this] { controller_.OnCloseVersion(); });
+    auto version_close = Button("Close", [this] { controller_.OnCloseVersion(); });
 
     auto version_modal = Renderer(version_close, [this, version_close] {
         return vbox({
-                   text("calc-cli  v1.0.0") | bold | center,
+                   text("calc-cli  v" + std::string(calc_cli::kAppVersion)) | bold | center,
                    separator(),
-                   text("Terminal calculator built with FTXUI") | dim | center,
+                   text(std::string(calc_cli::kAppTitle)) | dim | center,
                    separator(),
                    version_close->Render() | center,
                }) |

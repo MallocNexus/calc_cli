@@ -1,4 +1,5 @@
 #include "model/parser.hpp"
+#include "util/constants.hpp"
 
 #include <cctype>
 #include <stdexcept>
@@ -82,11 +83,11 @@ double Parser::ParsePrimary() {
         return val;
     }
     
-    // Check if the next token is the keyword "exchange"
-    if (input_.compare(pos_, 8, "exchange") == 0) {
-        size_t next_pos = pos_ + 8;
+    // Check if the next token is the keyword
+    if (input_.compare(pos_, calc_cli::kParserExchangeKeywordLen, calc_cli::kParserExchangeKeyword) == 0) {
+        size_t next_pos = pos_ + calc_cli::kParserExchangeKeywordLen;
         if (next_pos >= input_.size() || !std::isalpha(static_cast<unsigned char>(input_[next_pos]))) {
-            pos_ += 8; // consume "exchange"
+            pos_ += calc_cli::kParserExchangeKeywordLen; // consume keyword
             SkipWhitespace();
             if (Peek() != '(') {
                 throw std::runtime_error("Expected '(' after exchange");
@@ -172,10 +173,10 @@ double Parser::ParseSumExpression() {
 double Parser::ParseExpr() {
     double left = ParseSumExpression();
     SkipWhitespace();
-    if (input_.compare(pos_, 8, "exchange") == 0) {
-        size_t next_pos = pos_ + 8;
+    if (input_.compare(pos_, calc_cli::kParserExchangeKeywordLen, calc_cli::kParserExchangeKeyword) == 0) {
+        size_t next_pos = pos_ + calc_cli::kParserExchangeKeywordLen;
         if (next_pos >= input_.size() || !std::isalpha(static_cast<unsigned char>(input_[next_pos]))) {
-            pos_ += 8; // consume "exchange"
+            pos_ += calc_cli::kParserExchangeKeywordLen; // consume keyword
             SkipWhitespace();
             if (Peek() != '(') {
                 throw std::runtime_error("Expected '(' after exchange");

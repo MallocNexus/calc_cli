@@ -14,41 +14,42 @@
 #include "model/calculator.hpp"
 #include "model/exchange_rate.hpp"
 #include "model/history_repository.hpp"
+#include "util/constants.hpp"
 #include "util/formatting.hpp"
 #include "view/app.hpp"
 
 static std::string GetDatabasePath() {
-    const char* home = std::getenv("HOME");
+    const char* home = std::getenv(calc_cli::kFileSysEnvHome.data());
     if (!home) {
-        home = std::getenv("USERPROFILE");
+        home = std::getenv(calc_cli::kFileSysEnvUserProfile.data());
     }
 
     std::string db_dir;
     if (home) {
-        db_dir = std::string(home) + "/.calc_cli";
+        db_dir = std::string(home) + std::string(calc_cli::kFileSysAppDataSubdir);
     } else {
-        db_dir = ".calc_cli";
+        db_dir = std::string(calc_cli::kFileSysAppDataFallbackDir);
     }
 
     std::filesystem::create_directories(db_dir);
-    return db_dir + "/calc_history.db";
+    return db_dir + std::string(calc_cli::kFileSysHistoryDbFilename);
 }
 
 static std::string GetExchangeRateDatabasePath() {
-    const char* home = std::getenv("HOME");
+    const char* home = std::getenv(calc_cli::kFileSysEnvHome.data());
     if (!home) {
-        home = std::getenv("USERPROFILE");
+        home = std::getenv(calc_cli::kFileSysEnvUserProfile.data());
     }
 
     std::string db_dir;
     if (home) {
-        db_dir = std::string(home) + "/.calc_cli";
+        db_dir = std::string(home) + std::string(calc_cli::kFileSysAppDataSubdir);
     } else {
-        db_dir = ".calc_cli";
+        db_dir = std::string(calc_cli::kFileSysAppDataFallbackDir);
     }
 
     std::filesystem::create_directories(db_dir);
-    return db_dir + "/exchange_rate.db";
+    return db_dir + std::string(calc_cli::kFileSysExchangeRateDbFilename);
 }
 
 static int RunHeadless(const std::string& expr, bool print_only_value,
@@ -125,6 +126,9 @@ int main(int argc, char* argv[]) {
                 << "  --stdin-file FILE           Read expression from the specified file instead of stdin\n"
                 << "  --help                      Show this help message\n";
             // clang-format on
+            return EXIT_SUCCESS;
+        } else if (arg == "--version") {
+            std::cout << "calc-cli version " << std::string(calc_cli::kAppVersion) << "\n";
             return EXIT_SUCCESS;
         } else if (expr_arg.empty() && arg.find("--") != 0) {
             // Support passing raw expression without --expr, e.g. calc_cli "2 + 2"

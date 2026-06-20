@@ -1,4 +1,5 @@
 #include "util/formatting.hpp"
+#include "util/constants.hpp"
 
 #include <cstdio>
 #include <string>
@@ -20,15 +21,15 @@ std::string FormatExpression(const std::string& input) {
         char c = input[i];
         if (std::isspace(static_cast<unsigned char>(c))) continue;
 
-        // Check for "exchange" keyword
-        if (input.compare(i, 8, "exchange") == 0) {
-            size_t next_pos = i + 8;
+        // Check for keyword
+        if (input.compare(i, calc_cli::kParserExchangeKeywordLen, calc_cli::kParserExchangeKeyword) == 0) {
+            size_t next_pos = i + calc_cli::kParserExchangeKeywordLen;
             if (next_pos >= input.size() || !std::isalpha(static_cast<unsigned char>(input[next_pos]))) {
                 if (!out.empty() && (std::isalnum(static_cast<unsigned char>(out.back())) || out.back() == ')')) {
                     out += ' ';
                 }
-                out += "exchange";
-                i += 7; // skip "exchange" characters (loop will increment i to i+8)
+                out += calc_cli::kParserExchangeKeyword;
+                i += calc_cli::kParserExchangeKeywordLen - 1; // skip keyword characters (loop will increment i)
                 prev_is_operator = false;
                 continue;
             }
@@ -49,7 +50,7 @@ std::string FormatExpression(const std::string& input) {
         } else if (c == '(') {
             // Only add a space before '(' if it does not follow "exchange"
             if (!out.empty() && out.back() != ' ' && out.back() != '(' && out.back() != '-' && out.back() != '+' &&
-                (out.size() < 8 || out.compare(out.size() - 8, 8, "exchange") != 0)) {
+                (out.size() < calc_cli::kParserExchangeKeywordLen || out.compare(out.size() - calc_cli::kParserExchangeKeywordLen, calc_cli::kParserExchangeKeywordLen, calc_cli::kParserExchangeKeyword) != 0)) {
                 out += ' ';
             }
             out += c;

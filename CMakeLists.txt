@@ -6,7 +6,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
@@ -108,6 +108,7 @@ target_link_libraries(calc_cli PRIVATE app_lib)
 # ---------------------------------------------------------------------------
 add_executable(run_tests
     tests/util/test_formatting.cpp
+    tests/util/test_constants.cpp
     tests/model/test_calculator.cpp
     tests/model/test_parser.cpp
     tests/model/test_history_repository.cpp
