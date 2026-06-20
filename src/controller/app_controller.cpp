@@ -79,10 +79,6 @@ void AppController::SyncHistoryMenuEntries() {
     for (const auto& [expr, res] : hist) {
         state_.history_menu_entries.push_back(expr + " = " + res);
     }
-    // Default selected index to the last entry (newest calculation)
-    if (!state_.history_menu_entries.empty()) {
-        state_.selected_history_idx = static_cast<int>(state_.history_menu_entries.size()) - 1;
-    } else {
-        state_.selected_history_idx = 0;
-    }
+    // Default selected index to the first entry (top of calculation history)
+    state_.selected_history_idx = 0;
 }

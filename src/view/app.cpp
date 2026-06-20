@@ -141,7 +141,7 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
         if (state_.history_menu_entries.empty()) {
             history_elem = text("  No history yet") | dim;
         } else {
-            history_elem = history_menu->Render() | yframe | flex;
+            history_elem = history_menu->Render() | vscroll_indicator | frame | flex;
         }
 
         return vbox({

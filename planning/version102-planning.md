@@ -100,7 +100,53 @@ Constrain the menu inside a scrollable frame boundary.
 
 #### Step 3 — Validation & Human Review
 * Build project and run tests.
-* **Stop here** for review. Confirm with: *"Phase 3 looks good, proceed to Final Integration"*
+* **Stop here** for review. Confirm with: *"Phase 3 looks good, proceed to 4"*
+
+---
+
+## Phase 4 · Scrollbar Indicator Integration
+
+> **Explicit Scrollbar Styling** · Render scrollbar indicator next to the history frame.
+> Affects: `src/view/app.cpp`
+
+### Step 1 — Implementation
+
+**Update `src/view/app.cpp`**:
+- Replace `yframe` with explicit `vscroll_indicator | frame` decoration to match Sonzogni's example pattern:
+  ```cpp
+  history_menu->Render() | vscroll_indicator | frame | flex
+  ```
+- This guarantees scrollbar rendering on the right-hand side of the calculation list when content overflows.
+
+### Step 2 — New Test Cases
+
+* Scrollbar indicators are purely visual elements processed by the FTXUI layout engine, so no new unit tests are required. Verification will rely on manual rendering checks.
+
+### Step 3 — Validation & Human Review
+
+* Build project and run tests.
+* **Stop here** for review. Confirm with: *"Phase 4 looks good, proceed to 5"*
+
+---
+
+## Phase 5 · Default Scroll Position to Top
+
+> **Top-Aligned Initial History View** · Change the initial selection index from the bottom to the top.
+> Affects: `src/controller/app_controller.cpp`, `tests/controller/test_app_controller.cpp`, `tests/view/test_app.cpp`
+
+### Step 1 — Implementation
+
+**Update `src/controller/app_controller.cpp`**:
+- In `SyncHistoryMenuEntries()`, default `selected_history_idx` to `0` instead of `size - 1` so the list is top-aligned at startup.
+
+### Step 2 — New Test Cases
+
+* Update existing assertions in `test_app_controller.cpp` and `test_app.cpp` that verify the initial selected history index, changing their expectation from `1` or `19` (the bottom) to `0` (the top).
+
+### Step 3 — Validation & Human Review
+
+* Build project and run tests.
+* **Stop here** for review. Confirm with: *"Phase 5 looks good, proceed to Final Integration"*
 
 ---
 
@@ -111,6 +157,8 @@ Constrain the menu inside a scrollable frame boundary.
 | 1 | State synchronization | `app_state.hpp`, `app_controller.cpp` | History entry conversion assertions |
 | 2 | Component creation & event handling | `app.cpp` | Component hierarchy focus assertions |
 | 3 | Frame scrolling layout & styling | `app.cpp`, `test_app.cpp` | Dynamic flex validation tests |
+| 4 | Scrollbar indicator integration | `app.cpp` | Visual rendering verification |
+| 5 | Default scroll position to top | `app_controller.cpp`, test files | Selection index top-align assertions |
 
 ---
 

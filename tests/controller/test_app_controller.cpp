@@ -155,14 +155,14 @@ TEST_CASE("AppController — History Menu Synchronization and Recall", "[control
     REQUIRE(state.history_menu_entries.size() == 2);
     REQUIRE(state.history_menu_entries[0] == "5 + 5 = 10");
     REQUIRE(state.history_menu_entries[1] == "2 * 4 = 8");
-    REQUIRE(state.selected_history_idx == 1); // Defaults to last item
+    REQUIRE(state.selected_history_idx == 0); // Defaults to top (first) item
 
     // Verify sync on new evaluation
     state.expression_input = "10 / 2";
     controller.OnEvaluate();
     REQUIRE(state.history_menu_entries.size() == 3);
     REQUIRE(state.history_menu_entries[2] == "10 / 2 = 5");
-    REQUIRE(state.selected_history_idx == 2);
+    REQUIRE(state.selected_history_idx == 0);
 
     // Verify recall selection
     state.selected_history_idx = 0; // "5 + 5 = 10"
