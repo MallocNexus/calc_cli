@@ -104,3 +104,74 @@ Control the menu's internal focus state externally by linking it to `AppState`:
 1. Add test assertions in `tests/view/test_app.cpp` to verify that `focused_history_idx` is reset to `0` immediately upon recall.
 2. Build and run tests to verify no regressions.
 
+---
+
+## Section 3: Append Exchange Shorthand to End of Input
+
+### Overview & Bug Analysis
+When the user has entered an expression (e.g. `600`) and navigates to the Exchange tab to select `AUD->USD`, the shorthand `"exchange(AUD, USD)"` is currently inserted at `state_.cursor_position`.
+However, because focus shifted to the menus, the input cursor index may be reset or set to `0`. Consequently, `"exchange(AUD, USD)"` is prepended to the beginning (e.g. `"exchange(AUD, USD)600"`) instead of being appended to the end.
+
+Since `exchange(...)` is an operator that applies to the preceding expression, it should **always** be appended to the end of the input box.
+
+### Proposed Solution
+Modify both [app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/app.cpp) and [custom_exchange.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.cpp) to always append the exchange shorthand to the end of the input:
+1. Helper check:
+   - If `state_.expression_input` is not empty and does not end with a space ` `, append a space before the shorthand (e.g. `" exchange(AUD, USD)"`).
+   - Otherwise, append the shorthand directly.
+2. Update `state_.cursor_position` to the end of the newly modified input string (`state_.expression_input.size()`), so the user can immediately continue typing at the end of the line.
+
+---
+
+## Section 3 Implementation Plan
+
+### Phase 6 · View Updates (Default & Custom Exchange)
+1. In [app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/app.cpp), modify the `on_enter` of `exchange_option`:
+   * Determine the string to append (`"exchange(AUD, USD)"`).
+   * Check if `state_.expression_input` is not empty and doesn't end with space; if so, prepend a space.
+   * Append to the end of `state_.expression_input`.
+   * Set `state_.cursor_position = state_.expression_input.size()`.
+2. In [custom_exchange.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.cpp), modify both the `OK` button callback and the `Return` key handler to use the same appending logic.
+
+### Phase 7 · Verification & Tests
+1. Update existing test case `App — Exchange -> AUD -> USD inserts shorthand` in [test_app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/view/test_app.cpp) to verify it appends to the end regardless of initial cursor position.
+2. Add a new integration test case (`App — Exchange -> AUD -> USD appends to end after typing`) that:
+   * Simulates typing `600` in the input field.
+   * Navigates to the Exchange tab menu.
+   * Simulates selecting `AUD->USD` and pressing Enter.
+   * Verifies the input contains `"600 exchange(AUD, USD)"` and the cursor is at the end.
+
+---
+
+## Section 4: Focus Refocus back to Expression Input after Exchange Selection
+
+### Overview & Bug Analysis
+Currently, when the user selects `AUD->USD` from the Exchange sub-menu, the shorthand is appended to the input field, but focus remains on the menu item. The user has to manually press Down to return focus to the expression input field.
+Similarly, when submitting the Custom Exchange modal, focus currently returns to the `Custom` menu item inside the Exchange tab rather than the input field.
+
+To streamline the user experience, selecting or submitting an exchange action should automatically return focus to the expression input field.
+
+### Proposed Solution
+1. In [app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/app.cpp), update `exchange_option.on_enter` to capture `expr_input_base` and call `expr_input_base->TakeFocus();` after appending the shorthand.
+2. In [custom_exchange.hpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.hpp) and [custom_exchange.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.cpp), extend the constructor to accept a focus/completion callback:
+   `CustomExchange(AppState& state, std::function<void()> on_submit_success);`
+3. Call `on_submit_success()` inside the `OK` button callback and `Return` event handler when inputs are valid and submitted successfully.
+4. Pass `[expr_input_base] { expr_input_base->TakeFocus(); }` when instantiating `CustomExchange` in [app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/app.cpp).
+
+---
+
+## Section 4 Implementation Plan
+
+### Phase 8 · View Focus Refactoring
+1. Update `CustomExchange` constructor definition in [custom_exchange.hpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.hpp) and [custom_exchange.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/custom_exchange.cpp).
+2. Update the `OK` button callback and `Return` key press handler inside `CustomExchange` to invoke the callback on successful submission.
+3. Update [app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/view/app.cpp):
+   * Modify `exchange_option.on_enter` to capture `expr_input_base` and call `expr_input_base->TakeFocus()`.
+   * Pass the callback when creating `custom_exchange_`.
+
+### Phase 9 · Verification & Tests
+1. Add test assertions in [test_app.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/view/test_app.cpp) to verify that the expression input component gains focus after inserting shorthand.
+2. Update `CustomExchange View — interaction` tests in [test_custom_exchange.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/view/test_custom_exchange.cpp) to verify that the submit success callback is invoked.
+
+
+

@@ -9,7 +9,8 @@ using namespace ftxui;
 
 TEST_CASE("CustomExchange View — interaction", "[custom_exchange]") {
     AppState state;
-    view::CustomExchange custom_exchange(state);
+    bool submit_called = false;
+    view::CustomExchange custom_exchange(state, [&submit_called] { submit_called = true; });
     auto comp = custom_exchange.GetComponent();
 
     SECTION("Escape cancels and closes the modal") {
@@ -26,14 +27,15 @@ TEST_CASE("CustomExchange View — interaction", "[custom_exchange]") {
         REQUIRE(state.custom_source_input.empty());
         REQUIRE(state.custom_target_input.empty());
         REQUIRE(state.expression_input == "100 ");
+        REQUIRE_FALSE(submit_called);
     }
 
     SECTION("Return with non-empty inputs saves and closes modal") {
         state.show_custom_modal = true;
         state.custom_source_input = "EUR";
         state.custom_target_input = "GBP";
-        state.expression_input = "100 ";
-        state.cursor_position = 4;
+        state.expression_input = "100";
+        state.cursor_position = 0; // cursor at the beginning
 
         // Dispatch Return event directly to custom_exchange component
         comp->OnEvent(Event::Return);
@@ -42,7 +44,8 @@ TEST_CASE("CustomExchange View — interaction", "[custom_exchange]") {
         REQUIRE(state.custom_source_input.empty());
         REQUIRE(state.custom_target_input.empty());
         REQUIRE(state.expression_input == "100 exchange(EUR, GBP)");
-        REQUIRE(state.cursor_position == 22); // 4 + length of "exchange(EUR, GBP)" (18) = 22
+        REQUIRE(state.cursor_position == 22);
+        REQUIRE(submit_called);
     }
 
     SECTION("Return with empty inputs does not insert or close modal") {

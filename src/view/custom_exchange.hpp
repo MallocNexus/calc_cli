@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ftxui/component/component.hpp>
+#include <functional>
 #include "model/app_state.hpp"
 
 namespace view {
@@ -11,7 +12,7 @@ namespace view {
 // ---------------------------------------------------------------------------
 class CustomExchange {
   public:
-    explicit CustomExchange(AppState& state);
+    explicit CustomExchange(AppState& state, std::function<void()> on_submit_success = [] {});
     ftxui::Component GetComponent();
 
   private:

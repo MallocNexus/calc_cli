@@ -122,8 +122,8 @@ TEST_CASE("App — File -> Quit calls on_quit", "[app]") {
 
 TEST_CASE("App — Exchange -> AUD -> USD inserts shorthand", "[app]") {
     auto f = MakeApp();
-    f->state.expression_input = "100 ";
-    f->state.cursor_position = 4;
+    f->state.expression_input = "100";
+    f->state.cursor_position = 0; // Cursor is at the beginning
 
     f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
     f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
@@ -131,6 +131,29 @@ TEST_CASE("App — Exchange -> AUD -> USD inserts shorthand", "[app]") {
     f->comp->OnEvent(Event::Return);       // trigger insert
 
     REQUIRE(f->state.expression_input == "100 exchange(AUD, USD)");
+    REQUIRE(f->state.cursor_position == 22); // Cursor should be at the end of the new string
+
+    // Verify focus returned to expr_input by typing a character '1'
+    f->comp->OnEvent(Event::Character('1'));
+    REQUIRE(f->state.expression_input == "100 exchange(AUD, USD)1");
+}
+
+TEST_CASE("App — Exchange -> AUD -> USD appends to end after typing", "[app]") {
+    auto f = MakeApp();
+    f->state.expression_input = "600";
+    f->state.cursor_position = 3;
+
+    f->comp->OnEvent(Event::ArrowRight);   // File -> Edit
+    f->comp->OnEvent(Event::ArrowRight);   // Edit -> Exchange
+    f->comp->OnEvent(Event::ArrowDown);    // focus into Exchange sub-menu (AUD -> USD)
+    f->comp->OnEvent(Event::Return);       // trigger insert
+
+    REQUIRE(f->state.expression_input == "600 exchange(AUD, USD)");
+    REQUIRE(f->state.cursor_position == 22);
+
+    // Verify focus returned to expr_input by typing a character '+'
+    f->comp->OnEvent(Event::Character('+'));
+    REQUIRE(f->state.expression_input == "600 exchange(AUD, USD)+");
 }
 
 TEST_CASE("App — History Menu navigation and recall", "[app][history_menu]") {

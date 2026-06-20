@@ -80,11 +80,15 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
     // Exchange sub-menu: AUD -> USD | Custom
     // ------------------------------------------------------------------
     MenuOption exchange_option = MenuOption::HorizontalAnimated();
-    exchange_option.on_enter = [this] {
+    exchange_option.on_enter = [this, expr_input_base] {
         if (exchange_selected_ == EXCHANGE_AUD_USD) {
-            std::string inserted = "exchange(AUD, USD)";
-            state_.expression_input.insert(state_.cursor_position, inserted);
-            state_.cursor_position += inserted.size();
+            std::string text_to_append = "exchange(AUD, USD)";
+            if (!state_.expression_input.empty() && state_.expression_input.back() != ' ') {
+                text_to_append = " " + text_to_append;
+            }
+            state_.expression_input += text_to_append;
+            state_.cursor_position = static_cast<int>(state_.expression_input.size());
+            expr_input_base->TakeFocus();
         } else if (exchange_selected_ == EXCHANGE_CUSTOM) {
             state_.show_custom_modal = true;
         }
@@ -180,7 +184,9 @@ App::App(AppState& state, AppController& controller) : state_(state), controller
     // ------------------------------------------------------------------
     // Custom Exchange Modal (Exchange -> Custom)
     // ------------------------------------------------------------------
-    custom_exchange_ = std::make_shared<view::CustomExchange>(state_);
+    custom_exchange_ = std::make_shared<view::CustomExchange>(state_, [expr_input_base] {
+        expr_input_base->TakeFocus();
+    });
     auto custom_modal = custom_exchange_->GetComponent();
 
     // ------------------------------------------------------------------

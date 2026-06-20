@@ -6,7 +6,7 @@ namespace view {
 
 using namespace ftxui;
 
-CustomExchange::CustomExchange(AppState& state) : state_(state) {
+CustomExchange::CustomExchange(AppState& state, std::function<void()> on_submit_success) : state_(state) {
     InputOption src_opt = InputOption::Default();
     src_opt.content = &state_.custom_source_input;
     src_opt.placeholder = "";
@@ -17,14 +17,18 @@ CustomExchange::CustomExchange(AppState& state) : state_(state) {
     dst_opt.placeholder = "";
     auto dst_input = Input(dst_opt);
 
-    auto custom_ok = Button("  OK  ", [this] {
+    auto custom_ok = Button("  OK  ", [this, on_submit_success] {
         if (!state_.custom_source_input.empty() && !state_.custom_target_input.empty()) {
-            std::string inserted = "exchange(" + state_.custom_source_input + ", " + state_.custom_target_input + ")";
-            state_.expression_input.insert(state_.cursor_position, inserted);
-            state_.cursor_position += inserted.size();
+            std::string text_to_append = "exchange(" + state_.custom_source_input + ", " + state_.custom_target_input + ")";
+            if (!state_.expression_input.empty() && state_.expression_input.back() != ' ') {
+                text_to_append = " " + text_to_append;
+            }
+            state_.expression_input += text_to_append;
+            state_.cursor_position = static_cast<int>(state_.expression_input.size());
             state_.show_custom_modal = false;
             state_.custom_source_input.clear();
             state_.custom_target_input.clear();
+            on_submit_success();
         }
     });
 
@@ -43,7 +47,7 @@ CustomExchange::CustomExchange(AppState& state) : state_(state) {
         })
     });
 
-    auto modal_event_handler = CatchEvent(modal_container, [this](Event event) -> bool {
+    auto modal_event_handler = CatchEvent(modal_container, [this, on_submit_success](Event event) -> bool {
         if (event == Event::Escape) {
             state_.show_custom_modal = false;
             state_.custom_source_input.clear();
@@ -52,12 +56,16 @@ CustomExchange::CustomExchange(AppState& state) : state_(state) {
         }
         if (event == Event::Return) {
             if (!state_.custom_source_input.empty() && !state_.custom_target_input.empty()) {
-                std::string inserted = "exchange(" + state_.custom_source_input + ", " + state_.custom_target_input + ")";
-                state_.expression_input.insert(state_.cursor_position, inserted);
-                state_.cursor_position += inserted.size();
+                std::string text_to_append = "exchange(" + state_.custom_source_input + ", " + state_.custom_target_input + ")";
+                if (!state_.expression_input.empty() && state_.expression_input.back() != ' ') {
+                    text_to_append = " " + text_to_append;
+                }
+                state_.expression_input += text_to_append;
+                state_.cursor_position = static_cast<int>(state_.expression_input.size());
                 state_.show_custom_modal = false;
                 state_.custom_source_input.clear();
                 state_.custom_target_input.clear();
+                on_submit_success();
                 return true;
             }
             return true;
@@ -83,8 +91,8 @@ CustomExchange::CustomExchange(AppState& state) : state_(state) {
                        text("    "),
                        custom_cancel->Render() | center
                    }) | center
-               }) |
-               size(WIDTH, GREATER_THAN, 40) | border | clear_under | center;
+                }) |
+                size(WIDTH, GREATER_THAN, 40) | border | clear_under | center;
     });
 }
 
