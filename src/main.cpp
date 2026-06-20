@@ -127,6 +127,9 @@ int main(int argc, char* argv[]) {
                 << "  --help                      Show this help message\n";
             // clang-format on
             return EXIT_SUCCESS;
+        } else if (arg == "--version") {
+            std::cout << "calc-cli version " << std::string(calc_cli::kAppVersion) << "\n";
+            return EXIT_SUCCESS;
         } else if (expr_arg.empty() && arg.find("--") != 0) {
             // Support passing raw expression without --expr, e.g. calc_cli "2 + 2"
             expr_arg = arg;

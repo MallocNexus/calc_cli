@@ -5,6 +5,8 @@
 
 namespace calc_cli {
 
+// clang-format off
+
 // Constants are added here phase by phase.
 // See docs/future-refactoring-ideas.md for deferred constants.
 
@@ -36,8 +38,14 @@ constexpr std::string_view kDbHistoryTable           = "history";
 constexpr std::string_view kDbHistoryColExpression   = "expression";
 constexpr std::string_view kDbHistoryColResult       = "result";
 constexpr std::string_view kDbHistoryColTimestamp    = "timestamp";
+
 // ── Parser ──────────────────────────────────────────────────────────────────
 constexpr std::string_view kParserExchangeKeyword    = "exchange";
 constexpr std::size_t      kParserExchangeKeywordLen = kParserExchangeKeyword.size();
 
+// ── About Details ───────────────────────────────────────────────────────────────
+constexpr std::string_view kAppTitle    = "Terminal calculator built with FTXUI";
+constexpr std::string_view kAppVersion  = "1.0.1";
+
+// clang-format on
 }  // namespace calc_cli
