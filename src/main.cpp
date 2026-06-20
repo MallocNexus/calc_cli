@@ -1,28 +1,28 @@
-#include "model/app_state.hpp"
-#include "model/calculator.hpp"
-#include "model/history_repository.hpp"
-#include "model/exchange_rate.hpp"
-#include "controller/app_controller.hpp"
-#include "controller/history_controller.hpp"
-#include "controller/exchange_rate_controller.hpp"
-#include "view/app.hpp"
-#include "util/formatting.hpp"
+#include <unistd.h>
 
+#include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <ftxui/component/screen_interactive.hpp>
 #include <iostream>
 #include <string>
-#include <unistd.h>
-#include <cstdio>
-#include <filesystem>
 
-#include <ftxui/component/screen_interactive.hpp>
+#include "controller/app_controller.hpp"
+#include "controller/exchange_rate_controller.hpp"
+#include "controller/history_controller.hpp"
+#include "model/app_state.hpp"
+#include "model/calculator.hpp"
+#include "model/exchange_rate.hpp"
+#include "model/history_repository.hpp"
+#include "util/formatting.hpp"
+#include "view/app.hpp"
 
 static std::string GetDatabasePath() {
     const char* home = std::getenv("HOME");
     if (!home) {
         home = std::getenv("USERPROFILE");
     }
-    
+
     std::string db_dir;
     if (home) {
         db_dir = std::string(home) + "/.calc_cli";
@@ -39,7 +39,7 @@ static std::string GetExchangeRateDatabasePath() {
     if (!home) {
         home = std::getenv("USERPROFILE");
     }
-    
+
     std::string db_dir;
     if (home) {
         db_dir = std::string(home) + "/.calc_cli";
@@ -51,9 +51,8 @@ static std::string GetExchangeRateDatabasePath() {
     return db_dir + "/exchange_rate.db";
 }
 
-static int RunHeadless(const std::string& expr, bool print_only_value, 
-                       HistoryController& history_ctrl,
-                       ExchangeRateController& exch_ctrl,
+static int RunHeadless(const std::string& expr, bool print_only_value,
+                       HistoryController& history_ctrl, ExchangeRateController& exch_ctrl,
                        const std::string& exchange_arg = "") {
     std::string final_expr = expr;
     if (!exchange_arg.empty()) {
@@ -74,13 +73,13 @@ static int RunHeadless(const std::string& expr, bool print_only_value,
 
     std::string formatted = util::FormatExpression(final_expr);
     Calculator calc;
-    
+
     auto resolver = [&exch_ctrl](const std::string& base, const std::string& quote) {
         return exch_ctrl.GetRate(base, quote);
     };
 
     EvaluationResult res = calc.Evaluate(formatted, resolver);
-    
+
     if (res.ok) {
         std::string result_str = util::FormatDouble(res.value);
         if (print_only_value) {
@@ -106,15 +105,27 @@ int main(int argc, char* argv[]) {
         std::string arg = argv[i];
         if (arg == "--stdin-file" && i + 1 < argc) {
             std::freopen(argv[i + 1], "r", stdin);
-            i++; // skip file path
+            i++;  // skip file path
         } else if (arg == "--value") {
             print_only_value = true;
         } else if (arg == "--expr" && i + 1 < argc) {
             expr_arg = argv[i + 1];
-            i++; // skip expression value
+            i++;  // skip expression value
         } else if (arg == "--exchange" && i + 1 < argc) {
             exchange_arg = argv[i + 1];
-            i++; // skip exchange format
+            i++;  // skip exchange format
+        } else if (arg == "--help") {
+            // clang-format off
+            std::cout
+                << "Usage: calc_cli [options]\n"
+                << "Options:\n"
+                << "  --expr \"EXPRESSION\"         Evaluate the given expression in headless mode\n"
+                << "  --exchange \"(BASE,QUOTE)\"   Append exchange(BASE,QUOTE) to the expression\n"
+                << "  --value                     Print only the result value without expression\n"
+                << "  --stdin-file FILE           Read expression from the specified file instead of stdin\n"
+                << "  --help                      Show this help message\n";
+            // clang-format on
+            return EXIT_SUCCESS;
         } else if (expr_arg.empty() && arg.find("--") != 0) {
             // Support passing raw expression without --expr, e.g. calc_cli "2 + 2"
             expr_arg = arg;
@@ -150,8 +161,9 @@ int main(int argc, char* argv[]) {
             return RunHeadless(expr, print_only_value, history_ctrl, exch_ctrl, exchange_arg);
         }
     }
-    using namespace ftxui;
 
+    // 3. Default to interactive mode using FTXUI
+    using namespace ftxui;
     auto screen = ScreenInteractive::Fullscreen();
 
     AppState state;
@@ -161,5 +173,6 @@ int main(int argc, char* argv[]) {
     App app(state, controller);
 
     screen.Loop(app.GetComponent());
+
     return EXIT_SUCCESS;
 }
