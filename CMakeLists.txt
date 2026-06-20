@@ -108,6 +108,7 @@ target_link_libraries(calc_cli PRIVATE app_lib)
 # ---------------------------------------------------------------------------
 add_executable(run_tests
     tests/util/test_formatting.cpp
+    tests/util/test_constants.cpp
     tests/model/test_calculator.cpp
     tests/model/test_parser.cpp
     tests/model/test_history_repository.cpp
