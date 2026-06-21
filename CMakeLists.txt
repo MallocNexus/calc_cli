@@ -9,6 +9,8 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -47,7 +49,7 @@ find_package(SQLite3 REQUIRED)
 # ---------------------------------------------------------------------------
 # Utility library (no dependencies)
 # ---------------------------------------------------------------------------
-add_library(util_lib src/util/formatting.cpp)
+add_library(util_lib STATIC src/util/formatting.cpp)
 target_include_directories(util_lib PUBLIC src/)
 
 # ---------------------------------------------------------------------------
@@ -55,7 +57,7 @@ target_include_directories(util_lib PUBLIC src/)
 # Headers accessed as: #include "model/calculator.hpp"
 #                       #include "model/app_state.hpp"
 # ---------------------------------------------------------------------------
-add_library(calc_lib
+add_library(calc_lib STATIC
     src/service/calculator.cpp
     src/service/parser.cpp
     src/model/history_repository.cpp
@@ -68,7 +70,7 @@ target_link_libraries(calc_lib PUBLIC util_lib SQLite3::SQLite3)
 # Layer 2: Controller  (no FTXUI dependency)
 # Headers accessed as: #include "controller/app_controller.hpp"
 # ---------------------------------------------------------------------------
-add_library(controller_lib
+add_library(controller_lib STATIC
     src/controller/app_controller.cpp
     src/controller/history_controller.cpp
     src/controller/exchange_rate_controller.cpp
@@ -85,7 +87,7 @@ target_link_libraries(controller_lib PUBLIC
 # Layer 3: View  (depends on FTXUI + controller_lib)
 # Headers accessed as: #include "view/app.hpp"
 # ---------------------------------------------------------------------------
-add_library(app_lib 
+add_library(app_lib STATIC
     src/view/app.cpp
     src/view/custom_exchange.cpp
 )
