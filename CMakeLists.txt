@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(CalcCli VERSION 1.0.0)
+project(CalcCli VERSION 1.0.3)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "Setting build type to 'Debug' as none was specified.")

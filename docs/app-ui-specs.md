@@ -1,88 +1,95 @@
-# App UI Specifications
+# User Interface Specifications (v1.0.3)
 
-This document outlines the user interface design and component structure of the `calc-cli` application, as implemented in `src/view/app.cpp`.
+This document defines the layout, visual styling, components, and interaction patterns of the `calc-cli` Terminal User Interface (TUI).
 
-## UI ASCII Layout
+## 1. General Layout
 
-The main interface is a vertical container composed of several stacked components, enclosed within a border.
+The interface is enclosed in a single outer border and uses horizontal separator lines to divide the screen into five main sections.
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
-│ File  Edit  Help                                           │ <- Top Menu (Horizontal)
+│  File  Edit  Exchange  Help                                │ <- Top Menu Bar
 ├────────────────────────────────────────────────────────────┤
-│ Quit                                                       │ <- Sub-Menu (Tab Container)
+│  Clear Input  Clear History                                │ <- Sub-Menu Options
 ├────────────────────────────────────────────────────────────┤
-│  > 3 + 4 * (2 - 1)_                                        │ <- Expression Input
+│ > 3 + 4 * (2 - 1)_                                         │ <- Expression Input
 ├────────────────────────────────────────────────────────────┤
-│    = 7                                                     │ <- Result Display
+│   = 7                                                      │ <- Result Display (Green on success, Red on error)
+├────────────────────────────────────────────────────────────┤
+│ History:                                                   │ <- History Panel Header
+├────────────────────────────────────────────────────────────┤
+│   3 + 4 * (2 - 1) = 7                                      │ <- History List Items
+│   10 + 20 = 30                                             │
+│   50 exchange(AUD, USD) = 32.50                            │
 └────────────────────────────────────────────────────────────┘
 ```
 
-### Modals
+## 2. Component Design & Behaviors
 
-Modals are stacked on top of the main view and center themselves on the screen, clearing the content underneath.
+### A. Top Menu Bar & Sub-Menus
+* **Top Menu**: Horizontal menu with animated transitions using `ftxui::MenuOption::HorizontalAnimated()`.
+* **Tab Container**: A `ftxui::Container::Tab` displays the horizontal sub-menu list matching the selected top category:
+  - **File**:
+    - `Quit`: Closes the application via `controller_.OnQuit()`.
+  - **Edit**:
+    - `Clear Input`: Clears the input field and result display via `controller_.OnClear()`.
+    - `Clear History`: Erases all database and cached calculations via `controller_.OnClearHistory()`.
+  - **Exchange**:
+    - `AUD->USD`: Appends `exchange(AUD, USD)` to the input and refocuses it.
+    - `Custom`: Opens the Custom Exchange Rate modal popup.
+  - **Help**:
+    - `Version`: Opens the Version modal popup.
 
-**Version Modal (Help -> Version):**
+### B. Expression Input Field
+* **Type**: `ftxui::Input` component restricted to a single line.
+* **Placeholder**: `Enter expression, e.g.  3 + 4 * (2 - 1)`.
+* **Styling**: Dimmed when showing the placeholder. Turns **green** when focused, **white** when unfocused.
+* **Event Interceptions**:
+  - `Return`: Triggers calculation via `controller_.OnEvaluate()`.
+  - `Escape`: Clears the input field via `controller_.OnClear()`.
+
+### C. Result Display
+* **Type**: A text renderer that displays the result of the evaluation.
+* **Styling**:
+  - Empty: Displays nothing.
+  - Success (valid expression): Displayed as `= <result>` in **bold green**.
+  - Error (invalid expression/division by zero): Displayed as `Error: <reason>` in **red**.
+
+### D. Inline History Panel
+* **Type**: A vertical list container (`ftxui::MenuOption::Vertical()`) at the bottom of the screen.
+* **Content**: Renders the history list from `state_.history_menu_entries`. If empty, displays `No history yet` (dimmed).
+* **Styling**: Wrapped with a vertical scrollbar indicator (`ftxui::vscroll_indicator | ftxui::frame`). Highlighted items turn **bold green** on focus.
+* **Interactions**:
+  - Pressing `Return` on a history item copies the expression back into the input field and resets the history index highlights to the top.
+
+### E. Dialog Modals
+
+Modals are stacked on top of the main layout, center themselves, and clear the screen underneath.
+
+#### 1. Version Modal (Help -> Version)
 ```text
 ┌───────────────────────────────────────────┐
-│              calc-cli  v1.0.0             │
+│              calc-cli  v1.0.3             │
 ├───────────────────────────────────────────┤
 │    Terminal calculator built with FTXUI   │
 ├───────────────────────────────────────────┤
 │                 [ Close ]                 │
 └───────────────────────────────────────────┘
 ```
+* **Trigger**: Activated when `state_.show_version_modal` is true.
+* **Components**: Displays the application title and current version. Features a centered "Close" button to close the modal.
 
-**History Modal (Edit -> History):**
+#### 2. Custom Exchange Modal (Exchange -> Custom)
 ```text
-┌──────────────────────────────────────────────────┐
-│   1 + 1  =  2                                    │
-│   2 * 3  =  6                                    │
-├──────────────────────────────────────────────────┤
-│                     [ Close ]                    │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│             Custom Exchange              │
+├──────────────────────────────────────────┤
+│ Source Currency:  [ AUD           ]      │
+│ Target Currency:  [ EUR           ]      │
+├──────────────────────────────────────────┤
+│            [ OK ]     [ Cancel ]         │
+└──────────────────────────────────────────┘
 ```
-
-## Component Breakdown
-
-The `App` class is responsible solely for the view layer. It constructs the FTXUI component tree and delegates all user actions to the `AppController`.
-
-### 1. Top Menu
-- **Type:** `Menu` with `MenuOption::HorizontalAnimated()`
-- **Entries:** `File`, `Edit`, `Help`
-- **Behavior:** Selects which sub-menu is visible in the tab container below it.
-
-### 2. Tab Container (Sub-Menus)
-- **Type:** `Container::Tab`
-- **Behavior:** Displays the sub-menu corresponding to the selected top menu item.
-- **Sub-Menus:**
-  - **File:** `Quit` -> Triggers `controller_.OnQuit()`
-  - **Edit:**
-    - `Clear` -> Triggers `controller_.OnClear()`
-    - `History` -> Triggers `controller_.OnOpenHistory()`
-  - **Help:**
-    - `Version` -> Triggers `controller_.OnOpenVersion()`
-
-### 3. Expression Input
-- **Type:** `Input` wrapped in `CatchEvent`
-- **Placeholder:** `Enter expression, e.g.  3 + 4 * (2 - 1)`
-- **Styling:** White text by default, turns Green when focused. Placeholder is dimmed.
-- **Event Handling:**
-  - `Return` -> Triggers `controller_.OnEvaluate()`
-  - `Escape` -> Triggers `controller_.OnClear()`
-
-### 4. Result Display
-- **Type:** `text` rendered within the `Renderer` block.
-- **Content:** Driven by `state_.result_display`.
-- **Styling:**
-  - Empty: Dimmed.
-  - Success (`state_.error_state == false`): Green and bold.
-  - Error (`state_.error_state == true`): Red.
-
-### 5. Main Layout Renderer
-- **Structure:** `vbox` containing the top menu, sub-menu, input, and result display, separated by `separator()` lines, and enclosed in a `border`.
-
-### 6. Modals
-- **Component Stack:** Uses `Modal` components to layer popups over the main renderer.
-- **Version Modal:** A static text popup with a "Close" button triggering `controller_.OnCloseVersion()`.
-- **History Modal:** Displays past evaluations retrieved from `controller_.GetHistory()`. If empty, shows "No history yet.". Includes a "Close" button triggering `controller_.OnCloseHistory()`.
+* **Trigger**: Activated when `state_.show_custom_modal` is true.
+* **Components**: Two single-line text input fields for Source and Target currency codes.
+* **Submission**: Pressing `OK` or `Return` appends `exchange(SOURCE, TARGET)` to the main input box and closes the modal. Pressing `Cancel` or `Escape` closes the modal without appending.
