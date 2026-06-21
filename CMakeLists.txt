@@ -56,8 +56,8 @@ target_include_directories(util_lib PUBLIC src/)
 #                       #include "model/app_state.hpp"
 # ---------------------------------------------------------------------------
 add_library(calc_lib
-    src/model/calculator.cpp
-    src/model/parser.cpp
+    src/service/calculator.cpp
+    src/service/parser.cpp
     src/model/history_repository.cpp
     src/model/exchange_rate.cpp
 )

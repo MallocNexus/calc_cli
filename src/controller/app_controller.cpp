@@ -1,7 +1,7 @@
 #include "controller/app_controller.hpp"
 #include "controller/history_controller.hpp"
 #include "controller/exchange_rate_controller.hpp"
-#include "model/calculator.hpp"
+#include "service/calculator.hpp"
 #include "util/formatting.hpp"
 
 #include <cstdio>

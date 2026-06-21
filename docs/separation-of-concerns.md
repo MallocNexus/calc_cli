@@ -22,9 +22,12 @@ graph TD
         ExchCtrl["ExchangeRateController (src/controller/exchange_rate_controller.cpp)"]
     end
 
-    subgraph Model ["Model Layer (Pure C++)"]
+    subgraph Service ["Service Layer (Domain Services)"]
+        Calc["Calculator (src/service/calculator.cpp)"]
+    end
+
+    subgraph Model ["Model Layer (Entities & Repositories)"]
         State["AppState (src/model/app_state.hpp)"]
-        Calc["Calculator (src/model/calculator.cpp)"]
         HistRepo["HistoryRepository (src/model/history_repository.cpp)"]
         ExchRepo["ExchangeRate (src/model/exchange_rate.cpp)"]
     end
@@ -52,6 +55,9 @@ graph TD
     %% Style Event Arrows Green
     linkStyle 0,1 stroke:#28a745,stroke-width:2px;
 
+    %% Style All Other Flow Lines Darker Blue
+    linkStyle 2,3,4,5,6,7,8 stroke:#0056b3,stroke-width:2px;
+
     %% Style Data Binding Arrows Purple
     linkStyle 9,10,11 stroke:#6f42c1,stroke-width:2px;
 ```
@@ -75,11 +81,16 @@ The controller layer manages data coordinating tasks, separated into a central a
   Manages cached exchange rate validation and coordinates fallback scenarios or Frankfurter API network downloads.
 * **Separation Rule**: **Zero TUI/FTXUI library dependencies.** The controllers can compile and run in a pure console environment (or unit tests) without pulling in screen formatting, color decorators, or layout coordinates.
 
-### Model Layer (Pure C++)
+### Service Layer (Pure C++ Domain Services)
+* **Calculator** ([calculator.cpp](../src/service/calculator.cpp)):
+  Coordinates expression evaluation and exposes the main calculation entry point.
+* **Parser** ([parser.cpp](../src/service/parser.cpp)):
+  Internal recursive-descent parser that parses infix math tokens and evaluates expression syntax.
+* **Separation Rule**: **Stateless & logic-focused.** Service components have no awareness of UI state lifecycles, database structures, or configuration layouts.
+
+### Model Layer (Pure C++ Entities & Repositories)
 * **AppState** ([app_state.hpp](../src/model/app_state.hpp)):
   Flat state structure holding TUI parameters like expression inputs, cursor index, visibility toggles, and selection indexes.
-* **Calculator** ([calculator.cpp](../src/model/calculator.cpp)):
-  Runs expression parsing and evaluates values using the `RateResolver` callback interface.
 * **HistoryRepository** ([history_repository.cpp](../src/model/history_repository.cpp)):
   Raw SQLite interface executing `INSERT`, `SELECT`, and `DELETE` queries on the history table.
 * **ExchangeRate** ([exchange_rate.cpp](../src/model/exchange_rate.cpp)):
@@ -107,11 +118,11 @@ graph TD
     AppCtrl -->|"Delegates history saving/clearing"| HistCtrl
     HistCtrl -->|"Writes/reads history rows"| HistRepo
 
-    %% Style Event/Delegation Green
-    linkStyle 0,1 stroke:#28a745,stroke-width:2px;
+    %% Style Event Green
+    linkStyle 0 stroke:#28a745,stroke-width:2px;
 
-    %% Style Model/Dependency Purple
-    linkStyle 2 stroke:#6f42c1,stroke-width:2px;
+    %% Style Other Flow Lines Darker Blue
+    linkStyle 1,2 stroke:#0056b3,stroke-width:2px;
 ```
 
 * **Flow & Responsibilities**:
@@ -140,11 +151,11 @@ graph TD
     ExchCtrl -->|"Checks and saves cache rates"| ExchRepo
     ExchCtrl -->|"HTTP GET requests (via CPR)"| Frankfurter
 
-    %% Style Event/Delegation Green
-    linkStyle 0,1,2 stroke:#28a745,stroke-width:2px;
+    %% Style Event Green
+    linkStyle 0,1 stroke:#28a745,stroke-width:2px;
 
-    %% Style Model/Dependency Purple
-    linkStyle 3,4 stroke:#6f42c1,stroke-width:2px;
+    %% Style Other Flow Lines Darker Blue
+    linkStyle 2,3,4 stroke:#0056b3,stroke-width:2px;
 ```
 
 * **Flow & Responsibilities**:
@@ -154,9 +165,43 @@ graph TD
 
 ---
 
-## 4. Model Layer Deep Dives
+## 4. Domain Service Deep Dives
 
-This section details how calculations, application state, and database transactions are encapsulated within the Model layer, and how they remain isolated from UI logic.
+This section details how core math parsing and logic processes are encapsulated within stateless domain services.
+
+### A. Calculator & Parser Flow (Domain Services)
+
+The `Calculator` serves as the entry point for calculations, parsing expression strings using the internal `Parser` class. Both components remain completely decoupled from SQL databases or network clients by leveraging a callback function interface.
+
+```mermaid
+graph TD
+    AppCtrl["AppController (src/controller/app_controller.cpp)"]
+    Calc["Calculator (src/service/calculator.cpp)"]
+    Parser["Parser (src/service/parser.cpp)"]
+    ExchCtrl["ExchangeRateController (src/controller/exchange_rate_controller.cpp)"]
+
+    AppCtrl -->|"Calls Evaluate(expression, resolver)"| Calc
+    Calc -->|"Instantiates & calls ParseExpr()"| Parser
+    Parser -.->|"Invokes RateResolver callback"| AppCtrl
+    AppCtrl -->|"Delegates rate query"| ExchCtrl
+
+    %% Style Callback Green
+    linkStyle 2 stroke:#28a745,stroke-width:2px;
+
+    %% Style Other Flow Lines Darker Blue
+    linkStyle 0,1,3 stroke:#0056b3,stroke-width:2px;
+```
+
+* **Responsibilities & Callbacks**:
+  * **Calculator**: Exposes the main arithmetic evaluation function, catching parsing exceptions and translating outputs into standard `EvaluationResult` structs.
+  * **Parser**: An internal recursive-descent syntax parser that runs token scanning and directly evaluates math rules. When it encounters currency exchange tokens, it invokes the `RateResolver` callback.
+  * **Callback Wiring**: The `AppController` sets up this callback at evaluation time, resolving rates by delegating the query to the `ExchangeRateController`.
+
+---
+
+## 5. Model Layer Deep Dives
+
+This section details how application state and database transactions are encapsulated within the Model layer, and how they remain isolated from UI logic.
 
 ### A. AppState (UI State Model)
 
@@ -173,8 +218,8 @@ graph TD
     App -.->|"Ref/Pointer data binding (ftxui::Ref)"| AppState
     CustomExchange -.->|"Ref/Pointer data binding (ftxui::Ref)"| AppState
 
-    %% Style Event/Delegation Green
-    linkStyle 0 stroke:#28a745,stroke-width:2px;
+    %% Style State Write Darker Blue
+    linkStyle 0 stroke:#0056b3,stroke-width:2px;
 
     %% Style Data Binding Purple
     linkStyle 1,2 stroke:#6f42c1,stroke-width:2px;
@@ -185,34 +230,7 @@ graph TD
   * **Direct Modification**: The `AppController` writes state modifications directly based on user inputs or business logic evaluations.
   * **Reactive Read**: View components (`App` and `CustomExchange`) bind directly to these variables via `ftxui::Ref` pointers, allowing the screen to repaint automatically when state variables change without manual view-updates.
 
----
-
-### B. Calculator (Decoupled Evaluation Model)
-
-The `Calculator` parses infix math expressions and executes evaluations. It does not depend on database controllers or TUI components, leveraging a callback mechanism to retrieve external rate values.
-
-```mermaid
-graph TD
-    AppCtrl["AppController (src/controller/app_controller.cpp)"]
-    Calc["Calculator (src/model/calculator.cpp)"]
-    ExchCtrl["ExchangeRateController (src/controller/exchange_rate_controller.cpp)"]
-
-    AppCtrl -->|"Calls Evaluate(expression, resolver)"| Calc
-    Calc -.->|"Invokes RateResolver callback"| AppCtrl
-    AppCtrl -->|"Delegates rate query"| ExchCtrl
-
-    %% Style Event/Delegation & Callbacks Green
-    linkStyle 0,1,2 stroke:#28a745,stroke-width:2px;
-```
-
-* **Responsibilities & Callbacks**:
-  * **Stateless Parsing**: Performs recursive-descent token parsing to calculate values.
-  * **Decoupled Dependency**: When encountering an exchange token like `exchange(AUD, USD)`, it triggers a `RateResolver` callback function. It does not know how rates are resolved (cached rates, database queries, or remote API fetches).
-  * **Callback Wiring**: The `AppController` sets up this callback at evaluation time, resolving rates by delegating the query to the `ExchangeRateController`.
-
----
-
-### C. Database Repositories (History & Cache Models)
+### B. Database Repositories (History & Cache Models)
 
 `HistoryRepository` and `ExchangeRate` encapsulate SQLite interface tables, shielding the rest of the application from direct SQL query constructs and database connections.
 
@@ -231,8 +249,8 @@ graph TD
     HistCtrl -->|"Writes/reads SQLite history"| HistRepo
     ExchCtrl -->|"Checks/saves SQLite cached rates"| ExchRepo
 
-    %% Style Model/Database Queries Purple
-    linkStyle 0,1 stroke:#6f42c1,stroke-width:2px;
+    %% Style Database Queries Darker Blue
+    linkStyle 0,1 stroke:#0056b3,stroke-width:2px;
 ```
 
 * **Responsibilities**:
@@ -241,7 +259,7 @@ graph TD
 
 ---
 
-## 5. Appendix: Diagram Style Guide
+## 6. Appendix: Diagram Style Guide
 
 This appendix serves as a behavioral reference for maintaining architecture diagrams within this repository.
 
@@ -249,8 +267,9 @@ This appendix serves as a behavioral reference for maintaining architecture diag
 
 | Color | Hex Code | Meaning / Usage | Example |
 |---|---|---|---|
-| **Green** | `#28a745` | Events, callbacks, and controller delegations | `App --> AppCtrl` |
-| **Purple** | `#6f42c1` | Data binding, database/model queries, API queries | `App -.-> ExchRepo` |
+| <span style="color:#28a745;">**Green**</span> | `#28a745` | Events and callback triggers | `App --> AppCtrl`, `Parser -.-> AppCtrl` |
+| <span style="color:#6f42c1;">**Purple**</span> | `#6f42c1` | Data binding | `App -.-> ExchRepo`, `CustomExchange -.-> State` |
+| <span style="color:#0056b3;">**Darker Blue**</span> | `#0056b3` | All other lines (delegation, databases, API queries) | `AppCtrl --> Calc`, `HistCtrl --> HistRepo` |
 | **Monochrome** | *Standard* | Structural borders, groups, components | `subgraph View` |
 
 ### B. Strict UML Standards

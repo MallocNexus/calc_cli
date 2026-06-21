@@ -1,16 +1,16 @@
 # Parser Extraction Plan
-## Refactoring `Parser` from `calculator.cpp` into `src/model/parser.cpp`
+## Refactoring `Parser` from `calculator.cpp` into `src/service/parser.cpp`
 
 ---
 
 ## 1. What Exists Today
 
-Inside `src/model/calculator.cpp`, the `Parser` class and the `FormatValue` helper
+Inside `src/service/calculator.cpp`, the `Parser` class and the `FormatValue` helper
 currently live in an **anonymous namespace** — meaning they are file-local and invisible
 to any other translation unit:
 
 ```
-src/model/calculator.cpp
+src/service/calculator.cpp
 ├── namespace { ... }          ← anonymous — INVISIBLE outside this file
 │   ├── class Parser { ... }   ← recursive descent parser
 │   └── FormatValue(double)    ← display formatting helper
@@ -140,7 +140,7 @@ class Parser {
 ## 5. `parser.cpp` Design
 
 ```cpp
-#include "model/parser.hpp"
+#include "service/parser.hpp"
 
 #include <cctype>
 #include <stdexcept>
@@ -158,8 +158,8 @@ namespace model::internal {
 ## 6. Updated `calculator.cpp`
 
 ```cpp
-#include "model/calculator.hpp"
-#include "model/parser.hpp"     // NEW include
+#include "service/calculator.hpp"
+#include "service/parser.hpp"     // NEW include
 
 #include <cctype>
 #include <cmath>
@@ -197,8 +197,8 @@ EvaluationResult Calculator::Evaluate(const std::string& expression) {
 ```cmake
 # Layer 1: Model (no FTXUI)
 add_library(calc_lib
-    src/model/calculator.cpp
-    src/model/parser.cpp       # NEW
+    src/service/calculator.cpp
+    src/service/parser.cpp       # NEW
 )
 target_include_directories(calc_lib PUBLIC src/)
 ```
@@ -212,21 +212,21 @@ target_include_directories(calc_lib PUBLIC src/)
 - `Parser` is in `model::internal` — tests never use it directly.
 - `Calculator` public API is unchanged.
 - All 16 existing test cases and 61 assertions continue to pass as-is.
-- If parser-specific unit tests are ever desired, they can `#include "model/parser.hpp"`
+- If parser-specific unit tests are ever desired, they can `#include "service/parser.hpp"`
   and instantiate `model::internal::Parser` directly.
 
 ---
 
 ## 9. Implementation Checklist
 
-- [ ] Create `src/model/parser.hpp` — declare `Parser` in `model::internal` namespace
-- [ ] Create `src/model/parser.cpp` — move all `Parser` method bodies from `calculator.cpp`
-- [ ] Update `src/model/calculator.cpp`:
+- [ ] Create `src/service/parser.hpp` — declare `Parser` in `model::internal` namespace
+- [ ] Create `src/service/parser.cpp` — move all `Parser` method bodies from `calculator.cpp`
+- [ ] Update `src/service/calculator.cpp`:
   - Remove the anonymous namespace block containing `Parser`
-  - Add `#include "model/parser.hpp"`
+  - Add `#include "service/parser.hpp"`
   - Change `Parser parser(expression)` to `model::internal::Parser parser(expression)`
   - Move `FormatValue` from anonymous namespace to file-local `static` function
-- [ ] Update `CMakeLists.txt` — add `src/model/parser.cpp` to `calc_lib` sources
+- [ ] Update `CMakeLists.txt` — add `src/service/parser.cpp` to `calc_lib` sources
 - [ ] Build: `cmake --build build`
 - [ ] Verify: `./build/run_tests` — all 61 assertions pass
 
@@ -240,4 +240,4 @@ target_include_directories(calc_lib PUBLIC src/)
 | `parser.hpp` in `src/model/` | Co-located with the code it supports, not in a public `include/` |
 | `FormatValue` stays in `calculator.cpp` as `static` | Single-use helper — no benefit to a shared file |
 | No test changes | `Parser` was always an impl detail; extraction doesn't change observable behaviour |
-| `add_library(calc_lib src/model/calculator.cpp src/model/parser.cpp)` | Both compile as part of the same `calc_lib` target |
+| `add_library(calc_lib src/service/calculator.cpp src/service/parser.cpp)` | Both compile as part of the same `calc_lib` target |

@@ -58,7 +58,7 @@ main.cpp
 view/app  ──────────────► controller/app_controller
 (FTXUI)                         │
                                 ▼
-                         model/calculator + model/app_state
+                         service/calculator + model/app_state
                          (no FTXUI, pure C++)
 ```
 
@@ -271,9 +271,9 @@ include(FetchContent)
 # FTXUI + Catch2 (via FetchContent — unchanged)
 
 # --- Layer 1: Model (no FTXUI) ---
-add_library(calc_lib src/model/calculator.cpp)
+add_library(calc_lib src/service/calculator.cpp)
 target_include_directories(calc_lib PUBLIC src/)
-# Headers accessed as: #include "model/calculator.hpp"
+# Headers accessed as: #include "service/calculator.hpp"
 #                       #include "model/app_state.hpp"
 
 # --- Layer 2: Controller (no FTXUI) ---
@@ -364,8 +364,8 @@ ColumnLimit:    100
 - [x] `.clang-format`, `.gitignore`, `CLAUDE.md`, `README.md`
 
 ### Phase 2 — Model Layer ✅ Done (needs move)
-- [x] `src/calculator.hpp` → move to `src/model/calculator.hpp`
-- [x] `src/calculator.cpp` → move to `src/model/calculator.cpp`
+- [x] `src/calculator.hpp` → move to `src/service/calculator.hpp`
+- [x] `src/calculator.cpp` → move to `src/service/calculator.cpp`
 - [ ] Extract `src/model/app_state.hpp` from `src/app.hpp`
 
 ### Phase 3 — Controller Layer 🆕 New
@@ -405,7 +405,7 @@ ColumnLimit:    100
 | Indentation | 4 spaces (project override) |
 | Private members | Trailing underscore (`state_`, `calc_`, `controller_`) |
 | Header guards | `#pragma once` |
-| Include paths | Relative to `src/` root: `"model/calculator.hpp"`, `"view/app.hpp"` |
+| Include paths | Relative to `src/` root: `"service/calculator.hpp"`, `"view/app.hpp"` |
 | Includes order | Related header → C std → C++ std → third-party |
 | Type/function naming | `PascalCase` |
 | Variable/parameter naming | `snake_case` |
@@ -425,4 +425,4 @@ ColumnLimit:    100
 | `app.cpp` constructor | ~165 lines, mixed concerns | pure layout/render, delegates all logic |
 | CMake targets | `calc_lib`, `app_lib` | `calc_lib`, `controller_lib`, `app_lib` |
 | Controller unit tests | none | 7 new tests, zero FTXUI dependency |
-| Main includes | `app.hpp`, `calculator.hpp` | `model/app_state.hpp`, `model/calculator.hpp`, `controller/app_controller.hpp`, `view/app.hpp` |
+| Main includes | `app.hpp`, `calculator.hpp` | `model/app_state.hpp`, `service/calculator.hpp`, `controller/app_controller.hpp`, `view/app.hpp` |

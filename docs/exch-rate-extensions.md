@@ -106,14 +106,14 @@ To maintain the project's strict MVC separation and support offline/unit testing
 * **Controller: AppController** ➡️ Coordinates overall app execution and holds a reference to `ExchangeRateController`.
 * **Controller: ExchangeRateController** ➡️ Responsible for checking the database cache, invoking the `cpr` library to perform network requests when the cache is missing/stale, and writing updated rates back to the database.
 * **Model: ExchangeRate** ➡️ Handles local SQLite database CRUD operations for cache records. Has zero network dependencies.
-* **Model: Calculator & Parser** ➡️ Evaluates expressions, invoking a resolver callback to fetch exchange rates without needing to know about curl, controllers, or database paths.
+* **Service: Calculator & Parser** ➡️ Evaluates expressions, invoking a resolver callback to fetch exchange rates without needing to know about curl, controllers, or database paths.
 
 ```mermaid
 graph TD
     A[View: App] --> B[Controller: AppController]
     A --> G[View: CustomExchange]
     B --> H[Controller: ExchangeRateController]
-    B --> C[Model: Calculator]
+    B --> C[Service: Calculator]
     H --> D[Model: ExchangeRate]
     H --> F[Frankfurter API via CPR]
     D --> E[(SQLite: exchange_rate.db)]
@@ -287,7 +287,7 @@ To ensure the parser remains fully unit-testable without triggering live network
 using RateResolver = std::function<double(const std::string&, const std::string&)>;
 ```
 
-### `src/model/parser.hpp`
+### `src/service/parser.hpp`
 ```cpp
 class Parser {
   public:
@@ -305,7 +305,7 @@ class Parser {
 We will pass the `RateResolver` to the `Calculator::Evaluate` method:
 
 ```cpp
-// In src/model/calculator.hpp
+// In src/service/calculator.hpp
 class Calculator {
   public:
     EvaluationResult Evaluate(const std::string& expression, RateResolver resolver = nullptr);
