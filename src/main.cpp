@@ -11,7 +11,7 @@
 #include "controller/exchange_rate_controller.hpp"
 #include "controller/history_controller.hpp"
 #include "model/app_state.hpp"
-#include "model/calculator.hpp"
+#include "service/calculator.hpp"
 #include "model/exchange_rate.hpp"
 #include "model/history_repository.hpp"
 #include "util/constants.hpp"

@@ -1,5 +1,5 @@
-#include "model/calculator.hpp"
-#include "model/parser.hpp"
+#include "service/calculator.hpp"
+#include "service/parser.hpp"
 #include "util/formatting.hpp"
 
 #include <cctype>
@@ -17,7 +17,7 @@ EvaluationResult Calculator::Evaluate(const std::string& expression, RateResolve
     }
 
     try {
-        model::internal::Parser parser(expression, resolver);
+        service::internal::Parser parser(expression, resolver);
         double value = parser.ParseExpr();
 
         // Reject trailing garbage after a valid expression (e.g. "3 + 4 abc").

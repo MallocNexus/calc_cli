@@ -27,6 +27,7 @@ struct AppState {
     // Calculation History Menu/Scrolling State
     std::vector<std::string> history_menu_entries;
     int selected_history_idx = 0;
+    int focused_history_idx = 0;
 };
 
 // ---------------------------------------------------------------------------

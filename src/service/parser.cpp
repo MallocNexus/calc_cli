@@ -1,4 +1,4 @@
-#include "model/parser.hpp"
+#include "service/parser.hpp"
 #include "util/constants.hpp"
 
 #include <cctype>
@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 
-namespace model::internal {
+namespace service::internal {
 
 Parser::Parser(const std::string& input, RateResolver resolver)
     : input_(input), pos_(0), rate_resolver_(resolver) {}
@@ -205,4 +205,4 @@ double Parser::ParseExpr() {
     return left;
 }
 
-}  // namespace model::internal
+}  // namespace service::internal

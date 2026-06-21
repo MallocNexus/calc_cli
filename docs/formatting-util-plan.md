@@ -8,7 +8,7 @@
 The same `%g` double-to-string logic exists in **two separate translation units**,
 under two different names:
 
-**`src/model/calculator.cpp` (line 9–14):**
+**`src/service/calculator.cpp` (line 9–14):**
 ```cpp
 static std::string FormatValue(double value) {
     char buf[64];
@@ -151,7 +151,7 @@ std::string FormatDouble(double value) {
 
 ## 6. Callers After Refactor
 
-### `src/model/calculator.cpp`
+### `src/service/calculator.cpp`
 
 ```cpp
 // Before:
@@ -201,8 +201,8 @@ target_include_directories(util_lib PUBLIC src/)
 
 # Layer 1: Model — now links util_lib
 add_library(calc_lib
-    src/model/calculator.cpp
-    src/model/parser.cpp
+    src/service/calculator.cpp
+    src/service/parser.cpp
 )
 target_include_directories(calc_lib PUBLIC src/)
 target_link_libraries(calc_lib PUBLIC util_lib)
@@ -234,7 +234,7 @@ target_link_libraries(controller_lib PUBLIC calc_lib util_lib)
 
 - [ ] Create `src/util/formatting.hpp` — declare `util::FormatDouble`
 - [ ] Create `src/util/formatting.cpp` — define `util::FormatDouble`
-- [ ] Update `src/model/calculator.cpp`:
+- [ ] Update `src/service/calculator.cpp`:
   - Remove `static FormatValue` function
   - Add `#include "util/formatting.hpp"`
   - Replace `FormatValue(value)` → `util::FormatDouble(value)`

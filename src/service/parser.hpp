@@ -6,7 +6,7 @@
 
 using RateResolver = std::function<double(const std::string&, const std::string&)>;
 
-namespace model::internal {
+namespace service::internal {
 
 // ---------------------------------------------------------------------------
 // Parser
@@ -60,4 +60,4 @@ class Parser {
     std::string ParseCurrency();
 };
 
-}  // namespace model::internal
+}  // namespace service::internal

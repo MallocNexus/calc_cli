@@ -1,7 +1,7 @@
 #include "controller/app_controller.hpp"
 #include "controller/history_controller.hpp"
 #include "controller/exchange_rate_controller.hpp"
-#include "model/calculator.hpp"
+#include "service/calculator.hpp"
 #include "util/formatting.hpp"
 
 #include <cstdio>
@@ -70,6 +70,8 @@ void AppController::OnUseSelectedHistory() {
         const auto& selected_pair = hist[state_.selected_history_idx];
         state_.expression_input = selected_pair.first;
         state_.cursor_position = static_cast<int>(selected_pair.first.size());
+        state_.selected_history_idx = 0; // Reset index immediately on use
+        state_.focused_history_idx = 0;  // Reset focus index immediately on use
     }
 }
 
@@ -81,4 +83,5 @@ void AppController::SyncHistoryMenuEntries() {
     }
     // Default selected index to the first entry (top of calculation history)
     state_.selected_history_idx = 0;
+    state_.focused_history_idx = 0;
 }

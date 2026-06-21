@@ -7,16 +7,19 @@
 * Build System: CMake (with Ninja generator recommended)
 
 ## Important Commands
-* **Configure:** `cmake -S . -B build -G Ninja`
+* **Configure:** `cmake -S . -B build -G Ninja` or `cmake -S . -B build`
 * **Build:** `cmake --build build`
 * **Run App:** `./build/calc_cli`
 * **Run Tests:** `./build/run_tests`
+* **Git Status:** `git status`
+* **Git Diff:** `git diff`
 * **Clang-format check:** `clang-format --dry-run --Werror src/**/*.cpp src/**/*.hpp tests/**/*.cpp`
 
 ## Architecture Notes
-* The project follows a **Model-View-Controller (MVC)** architecture split into subdirectories under `src/`:
-  * **`model/`**: Business logic, data repositories, and state.
-    * `Calculator` (`src/model/calculator.hpp` / `src/model/calculator.cpp`): Pure infix expression evaluator.
+* The project follows a layered architecture split into subdirectories under `src/`:
+  * **`service/`**: Domain Services (pure business logic, stateless computation).
+    * `Calculator` (`src/service/calculator.hpp` / `src/service/calculator.cpp`): Pure infix expression evaluator.
+  * **`model/`**: Domain Entities, state containers, and data repositories.
     * `HistoryRepository` (`src/model/history_repository.hpp` / `src/model/history_repository.cpp`): Database repo for calculation history.
     * `ExchangeRate` (`src/model/exchange_rate.hpp` / `src/model/exchange_rate.cpp`): SQLite backend caching exchange rates.
     * `AppState` (`src/model/app_state.hpp`): Shared data structure containing UI state.
@@ -44,3 +47,11 @@
 * Private member variables use a **trailing underscore** (e.g., `state_`, `db_`).
 * `using namespace ftxui;` is permitted in `.cpp` files only — never in headers.
 * `#pragma once` is used for all header guards.
+
+## Approved Terminal Commands
+The following commands are approved for execution during development:
+* `cmake -S . -B build` and `cmake --build build`
+* `git status` and `git diff`
+* `./build/run_tests`
+* `ls`, `find`, `file`, `cat`
+

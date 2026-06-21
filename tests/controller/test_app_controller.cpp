@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "model/app_state.hpp"
-#include "model/calculator.hpp"
+#include "service/calculator.hpp"
 #include "model/history_repository.hpp"
 #include "model/exchange_rate.hpp"
 #include "controller/app_controller.hpp"
