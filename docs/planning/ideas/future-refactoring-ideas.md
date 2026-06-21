@@ -180,3 +180,19 @@ this pass. Natural to include when the formatting utility is next touched.
 |---|---|---|
 | `kFmtDoubleBufSize` | `64` | `formatting.cpp:10` |
 | `kFmtDoubleFormatSpec` | `"%g"` | `formatting.cpp:11` |
+
+---
+
+## 5. Align `tests/` Directory Structure with `src/` Directory Structure
+
+**Deferred from:** Migration of `src/service/` domain services and general architectural cleanup
+
+**Rationale for deferral:**
+Currently, unit tests for stateless computation logic ([test_calculator.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/model/test_calculator.cpp) and [test_parser.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/model/test_parser.cpp)) are located in the [tests/model/](file:///Users/mattswart/Source/CPP/calc-cli/tests/model/) folder, whereas their corresponding source files ([calculator.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/service/calculator.cpp) and [parser.cpp](file:///Users/mattswart/Source/CPP/calc-cli/src/service/parser.cpp)) live under [src/service/](file:///Users/mattswart/Source/CPP/calc-cli/src/service/). Aligning the directories ensures structural consistency, mirroring, and better maintainability of the codebase.
+
+**What the refactor involves:**
+- Create a new directory named `tests/service/`.
+- Move [test_calculator.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/model/test_calculator.cpp) and [test_parser.cpp](file:///Users/mattswart/Source/CPP/calc-cli/tests/model/test_parser.cpp) from `tests/model/` into the new `tests/service/` directory.
+- Update the list of test source files in [CMakeLists.txt](file:///Users/mattswart/Source/CPP/calc-cli/CMakeLists.txt#L109) for the `run_tests` executable target.
+- Verify directories are clean and run the test suite to ensure tests still build and execute successfully.
+
